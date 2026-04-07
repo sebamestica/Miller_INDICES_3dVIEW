@@ -1,0 +1,10 @@
+{
+  "name": "miller-explorer-3d",
+  "version": "1.0.0",
+  "description": "Professional 3D Miller Indices Viewer with Mobile-First UX.",
+  "scripts": {
+    "start": "serve ."
+  },
+  "dependencies": {},
+  "private": true
+}
