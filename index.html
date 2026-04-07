@@ -4,14 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
     <title>Miller Explorer - Professional 3D Crystallography Lab</title>
-    <meta name="description" content="Technical 3D viewer for Miller Indices (hkl) and [hkl] crystallographic vectors. Optimized for professional crystallography education.">
+    <!-- Metadata & SEO -->
+    <meta name="description" content="Technical 3D viewer for Miller Indices (hkl) and [hkl] crystallographic vectors. Optimized for professional crystallography education and scientific analysis.">
     <meta property="og:title" content="Miller Explorer - 3D Crystallography">
-    <meta property="og:description" content="High-fidelity 3D visualization of Miller indices and normal vectors.">
-    <meta property="og:type" content="website">
+    <meta property="og:description" content="High-fidelity 3D visualization of Miller indices and normal vectors for cubic systems.">
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect x=%2220%22 y=%2220%22 width=%2260%22 height=%2260%22 fill=%22none%22 stroke=%22black%22 stroke-width=%228%22/><path d=%22M20 20 L40 10 M80 20 L100 10 M20 80 L40 70 M80 80 L100 70%22 stroke=%22black%22 stroke-width=%228%22/></svg>">
+    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-page: #f8f9fa;
@@ -20,367 +22,300 @@
             --border-color: #dee2e6;
             --text-main: #1a1e21;
             --text-secondary: #495057;
-            --text-muted: #6c757d;
+            --text-muted: #868e96;
             --accent-color: #000000;
             --accent-hover: #343a40;
-            --danger-color: #e03131;
-            --success-color: #2f9e44;
+            --danger: #fa5252;
+            --success: #40c057;
             --radius: 8px;
-            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-            --header-h: 60px;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --sidebar-w: 440px;
         }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Inter', sans-serif;
             background-color: var(--bg-page);
             color: var(--text-main);
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
-            overflow-y: auto;
+            overflow: hidden;
+        }
+        #app {
+            display: flex;
+            flex-direction: row;
+            flex: 1;
+            height: 100vh;
+            overflow: hidden;
         }
         #sidebar {
-            width: 100%;
-            background-color: var(--bg-sidebar);
-            padding: 24px 16px;
-            border-top: 1px solid var(--border-color);
-            order: 2;
+            width: var(--sidebar-w);
+            background: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            z-index: 10;
+            flex-shrink: 0;
         }
-        #viewport-container {
-            width: 100%;
-            height: 50vh;
-            position: sticky;
-            top: 0;
+        #viewport {
+            flex: 1;
+            position: relative;
             background-color: #ffffff;
-            padding: 0;
-            order: 1;
-            z-index: 5;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            overflow: hidden;
         }
         #canvas-wrapper {
             width: 100%;
             height: 100%;
-            background-color: #ffffff;
-            position: relative;
+            display: block;
+            touch-action: none;
         }
-        @media (min-width: 1024px) {
-            body {
-                flex-direction: row;
-                height: 100vh;
-                overflow: hidden;
-            }
-            #sidebar {
-                width: 440px;
-                height: 100vh;
-                border-top: none;
-                border-right: 1px solid var(--border-color);
-                padding: 40px;
-                order: 1;
-                overflow-y: auto;
-            }
-            #viewport-container {
-                flex-grow: 1;
-                height: 100vh;
-                padding: 24px;
-                order: 2;
-                background-color: var(--bg-page);
-            }
-            #canvas-wrapper {
-                border: 1px solid var(--border-color);
-                border-radius: var(--radius);
-                box-shadow: var(--shadow-md);
-            }
-        }
-        header {
-            margin-bottom: 32px;
-        }
-        header h1 {
-            font-size: 1.6rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            text-transform: uppercase;
-            margin-bottom: 6px;
-        }
-        header p {
-            font-size: 0.95rem;
-            color: var(--text-muted);
-        }
-        .section {
-            margin-bottom: 24px;
-        }
+        
+        /* Typography & Header */
+        header { margin-bottom: 40px; }
+        header h1 { font-size: 1.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: -0.01em; margin-bottom: 6px; }
+        header p { font-size: 0.95rem; color: var(--text-muted); }
+
+        .section { margin-bottom: 32px; }
         .section-title {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--text-muted);
             margin-bottom: 16px;
-            padding-bottom: 6px;
+            padding-bottom: 8px;
             border-bottom: 1px solid var(--border-color);
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .control-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-        .input-box label {
-            display: block;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-bottom: 8px;
-            color: var(--text-secondary);
-        }
+
+        /* Forms & Inputs */
+        .input-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+        .input-box label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); }
         input[type="number"] {
             width: 100%;
-            padding: 10px 14px;
+            padding: 12px;
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
             font-family: 'JetBrains Mono', monospace;
             font-size: 1.1rem;
             outline: none;
             transition: border-color 0.2s;
-            background-color: var(--bg-card);
         }
-        input[type="number"]:focus {
-            border-color: var(--accent-color);
-        }
-        .action-btn {
+        input[type="number"]:focus { border-color: var(--accent-color); }
+
+        .primary-btn {
             width: 100%;
-            padding: 12px;
-            background-color: var(--accent-color);
-            color: #ffffff;
+            padding: 16px;
+            background: var(--accent-color);
+            color: #fff;
             border: none;
             border-radius: var(--radius);
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 0.2s;
-            margin-bottom: 12px;
+            transition: all 0.2s;
+            margin-bottom: 10px;
         }
-        .action-btn:hover {
-            background-color: var(--accent-hover);
-        }
+        .primary-btn:hover { background: var(--accent-hover); box-shadow: var(--shadow-md); }
         .secondary-btn {
             width: 100%;
-            padding: 10px;
-            background-color: transparent;
+            padding: 12px;
+            background: transparent;
             color: var(--text-secondary);
             border: 1px solid var(--border-color);
             border-radius: var(--radius);
-            font-size: 1rem;
+            font-size: 0.9rem;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.2s;
         }
-        .secondary-btn:hover {
-            background-color: #f1f3f5;
-            border-color: #ced4da;
-        }
-        .toggle-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .toggle-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            font-size: 1rem;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 4px 0;
-        }
-        .toggle-item input {
-            cursor: pointer;
-            width: 18px;
-            height: 18px;
-            accent-color: var(--accent-color);
-        }
-        .info-card {
-            background-color: #ffffff;
+        .secondary-btn:hover { background: #f8f9fa; border-color: var(--text-muted); }
+
+        /* Presets */
+        .presets { display: flex; flex-wrap: wrap; gap: 8px; }
+        .preset-chip {
+            padding: 8px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            background: #fff;
             border: 1px solid var(--border-color);
-            padding: 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+        .preset-chip:hover { border-color: var(--accent-color); color: var(--accent-color); background: #fafafa; }
+
+        /* Toggles */
+        .toggle-group { display: flex; flex-direction: column; gap: 12px; }
+        .toggle-item { display: flex; align-items: center; gap: 12px; font-size: 0.95rem; color: var(--text-secondary); cursor: pointer; }
+        .toggle-item input { width: 20px; height: 20px; accent-color: var(--accent-color); cursor: pointer; }
+
+        /* Analysis Card */
+        .analysis-card {
+            background: #fff;
+            border: 1px solid var(--border-color);
             border-radius: var(--radius);
-            font-size: 1rem;
+            padding: 24px;
+            font-size: 0.95rem;
+            box-shadow: var(--shadow-sm);
         }
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 6px 0;
-        }
-        .info-row span:first-child {
-            color: var(--text-muted);
-        }
-        .info-row span:last-child {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 500;
-            color: var(--text-main);
-        }
-        .math-expr {
-            background-color: #f8f9fa;
-            padding: 8px;
+        .data-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px dashed #eee; }
+        .data-row:last-child { border-bottom: none; }
+        .data-label { color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+        .data-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text-main); }
+        .math-block {
+            margin-top: 16px;
+            padding: 12px;
+            background: #f8f9fa;
             border-radius: var(--radius);
             text-align: center;
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.9rem;
-            margin-top: 10px;
-            border: 1px dashed var(--border-color);
-        }
-        .preset-cloud {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-        .preset-tag {
-            padding: 6px 12px;
-            font-size: 0.85rem;
-            background-color: #ffffff;
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
             color: var(--text-secondary);
         }
-        .preset-tag:hover {
-            border-color: var(--accent-color);
-            color: var(--text-main);
-            background-color: #f8f9fa;
-        }
-        #status-msg {
-            font-size: 0.75rem;
-            color: var(--danger-color);
-            margin-top: 8px;
-            font-weight: 500;
+
+        #error-box {
+            color: var(--danger);
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 10px;
             display: none;
+            padding: 10px;
+            background: #fff5f5;
+            border-radius: var(--radius);
         }
-        #viewport-ui {
+
+        /* Viewport Labels */
+        #visual-controls {
             position: absolute;
-            bottom: 24px;
-            right: 24px;
-            pointer-events: none;
+            bottom: 32px;
+            right: 32px;
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
-            gap: 12px;
+            gap: 10px;
+            pointer-events: none;
         }
-        .legend-pill {
-            background-color: rgba(255,255,255,0.9);
+        .legend-tag {
+            background: rgba(255,255,255,0.92);
             backdrop-filter: blur(8px);
-            border: 1px solid var(--border-color);
             padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.8rem;
+            border-radius: 30px;
+            font-size: 0.75rem;
+            font-weight: 500;
             color: var(--text-secondary);
+            border: 1px solid var(--border-color);
             box-shadow: var(--shadow-sm);
         }
-        @media (max-width: 1023px) {
-            header { margin-bottom: 24px; text-align: center; }
-            .control-grid { gap: 8px; }
-            .preset-tag { padding: 10px 16px; font-size: 1rem; }
-            #viewport-ui { bottom: 12px; right: 12px; }
-            .legend-pill { font-size: 0.7rem; padding: 4px 10px; }
+
+        /* Responsive */
+        @media (max-width: 1100px) {
+            #app { flex-direction: column; }
+            #sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border-color); padding: 30px; }
+            #viewport { height: 50vh; min-height: 400px; }
+            #visual-controls { bottom: 16px; right: 16px; }
         }
-        @media (max-width: 900px) {
-            body { flex-direction: column; }
-            #sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border-color); }
-            #viewport-container { height: 60vh; }
+        @media (max-width: 600px) {
+            #sidebar { padding: 20px; }
+            header { margin-bottom: 24px; }
+            .input-grid { gap: 8px; }
         }
     </style>
 </head>
 <body>
-    <aside id="sidebar">
-        <header>
-            <h1>Miller Explorer</h1>
-            <p>Herramienta Técnica Cristalográfica</p>
-        </header>
-        <section class="section">
-            <h2 class="section-title">Parámetros (h k l)</h2>
-            <div class="control-grid">
-                <div class="input-box">
-                    <label>h</label>
-                    <input type="number" id="h-input" value="1" step="1">
+    <div id="app">
+        <aside id="sidebar">
+            <header>
+                <h1>Miller Explorer</h1>
+                <p>Laboratorio Cristalográfico Cúbico</p>
+            </header>
+
+            <section class="section">
+                <h2 class="section-title">Parámetros (h k l)</h2>
+                <div class="input-grid">
+                    <div class="input-box">
+                        <label>h</label>
+                        <input type="number" id="input-h" value="1" step="1">
+                    </div>
+                    <div class="input-box">
+                        <label>k</label>
+                        <input type="number" id="input-k" value="1" step="1">
+                    </div>
+                    <div class="input-box">
+                        <label>l</label>
+                        <input type="number" id="input-l" value="1" step="1">
+                    </div>
                 </div>
-                <div class="input-box">
-                    <label>k</label>
-                    <input type="number" id="k-input" value="1" step="1">
+                <button id="btn-apply" class="primary-btn">Actualizar Escena</button>
+                <div id="error-box">Entrada no válida.</div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Valores Típicos</h2>
+                <div class="presets" id="preset-container"></div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Análisis Técnico</h2>
+                <div class="analysis-card">
+                    <div class="data-row">
+                        <span class="data-label">Geometría</span>
+                        <span class="data-value" id="val-type">-</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Corte X (a)</span>
+                        <span class="data-value" id="val-x">-</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Corte Y (b)</span>
+                        <span class="data-value" id="val-y">-</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Corte Z (c)</span>
+                        <span class="data-value" id="val-z">-</span>
+                    </div>
+                    <div class="math-block" id="val-eqn">hx + ky + lz = 1</div>
+                    <div id="shift-notice" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 12px; text-align: center; display: none;">
+                        * Origen trasladado por índices negativos
+                    </div>
                 </div>
-                <div class="input-box">
-                    <label>l</label>
-                    <input type="number" id="l-input" value="1" step="1">
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Visualización</h2>
+                <div class="toggle-group">
+                    <label class="toggle-item"><input type="checkbox" id="toggle-plane" checked> Ver Plano (hkl)</label>
+                    <label class="toggle-item"><input type="checkbox" id="toggle-vector" checked> Ver Vector [hkl]</label>
+                    <label class="toggle-item"><input type="checkbox" id="toggle-grid" checked> Ver Grilla Base</label>
                 </div>
+            </section>
+
+            <section class="section">
+                <div style="padding: 20px; background: #fffde7; border-radius: var(--radius); border-left: 5px solid #fbc02d; font-size: 0.85rem; line-height: 1.6; color: #5d4037;">
+                    <strong>Guía:</strong> Este visualizador asume red cúbica donde el vector [hkl] es normal al plano (hkl). Se utiliza <i>clipping</i> exacto dentro de la celda unitaria [0,1].
+                </div>
+            </section>
+
+            <div style="margin-top: auto; padding-top: 20px;">
+                <button id="btn-reset" class="secondary-btn">Restablecer Cámara</button>
             </div>
-            <button id="apply-btn" class="action-btn">Actualizar Geometría</button>
-            <div id="status-msg">Indices inválidos para red cúbica.</div>
-        </section>
-        <section class="section">
-            <h2 class="section-title">Valores Típicos</h2>
-            <div class="preset-cloud" id="presets-btn-container"></div>
-        </section>
-        <section class="section">
-            <h2 class="section-title">Visualización</h2>
-            <div class="toggle-list">
-                <label class="toggle-item">
-                    <input type="checkbox" id="show-plane" checked> Mostrar Plano (hkl)
-                </label>
-                <label class="toggle-item">
-                    <input type="checkbox" id="show-vector" checked> Mostrar Vector [hkl]
-                </label>
-                <label class="toggle-item">
-                    <input type="checkbox" id="show-meta"> Mostrar Intersecciones
-                </label>
+        </aside>
+
+        <main id="viewport">
+            <div id="canvas-wrapper"></div>
+            <div id="visual-controls">
+                <div class="legend-tag">Rotación: Clic Izquierdo | Pan: Shift + Clic | Zoom: Rueda</div>
+                <div class="legend-tag">Ejes: X+ (Rojo) Y+ (Verde) Z+ (Azul)</div>
             </div>
-        </section>
-        <section class="section">
-            <h2 class="section-title">Análisis Matemático</h2>
-            <div class="info-card">
-                <div class="info-row">
-                    <span>Ecuación:</span>
-                    <span id="label-eqn">hx + ky + lz = 1</span>
-                </div>
-                <div class="info-row">
-                    <span>Corte Eje X:</span>
-                    <span id="label-ix">1/h</span>
-                </div>
-                <div class="info-row">
-                    <span>Corte Eje Y:</span>
-                    <span id="label-iy">1/k</span>
-                </div>
-                <div class="info-row">
-                    <span>Corte Eje Z:</span>
-                    <span id="label-iz">1/l</span>
-                </div>
-                <div class="math-expr" id="label-symbol">
-                    (1 1 1)
-                </div>
-            </div>
-        </section>
-        <section class="section">
-            <h2 class="section-title">Información Técnica</h2>
-            <div class="help-box" style="background-color: #fff9db; border-left: 3px solid #fcc419; padding: 16px; font-size: 0.9rem; line-height: 1.5; color: #664d03;">
-                Este simulador asume una <strong>celda cúbica simple</strong>. En este sistema, la dirección [hkl] es paralela al vector normal del plano (hkl). Las intersecciones se calculan como los recíprocos de los índices.
-            </div>
-        </section>
-        <div style="margin-top: auto; padding-top: 20px;">
-            <button id="reset-cam-btn" class="secondary-btn">Recentrar Cámara</button>
-        </div>
-    </aside>
-    <main id="viewport-container">
-        <div id="canvas-wrapper"></div>
-        <div id="viewport-ui">
-            <div class="legend-pill">Orbit: Click Izq | Pan: Alt + Click | Zoom: Scroll</div>
-            <div class="legend-pill">Ejes: X (Rojo), Y (Verde), Z (Azul)</div>
-        </div>
-    </main>
+        </main>
+    </div>
+
+    <!-- Three.js Engine -->
     <script async src="https://unpkg.com/es-module-shims@1.8.0/dist/es-module-shims.js"></script>
     <script type="importmap">
     {
@@ -393,276 +328,348 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        const APP_CONFIG = {
-            scale: 5,
-            eps: 1e-6,
+
+        const CONFIG = {
+            cellScale: 5,
+            epsilon: 1e-6,
             colors: {
-                bg: 0xf1f3f5,
-                cell: 0x000000,
-                plane: 0x007bff,
-                planeEdges: 0x004085,
-                vector: 0xff6b00,
-                axisX: 0xff0000,
-                axisY: 0x00c800,
-                axisZ: 0x0000ff,
-                grid: 0xcadbde
+                bg: 0xffffff,
+                plane: 0x2196f3,
+                planeEdge: 0x0d47a1,
+                vector: 0xf44336,
+                cell: 0x424242,
+                axisX: 0xff1744,
+                axisY: 0x00e676,
+                axisZ: 0x2979ff,
+                grid: 0xe0e0e0
             },
             presets: [
                 [1,0,0], [1,1,0], [1,1,1], [2,1,0], [0,1,1], [-1,2,1], [3,2,1], [1,0,-1], [2,2,1]
             ]
         };
-        class MillerLab {
+
+        class MillerExplorer {
             constructor() {
-                this.objects = {
-                    static: new THREE.Group(),
-                    dynamic: new THREE.Group()
-                };
-                this.init();
+                this.state = { h: 1, k: 1, l: 1, shift: { x: 0, y: 0, z: 0 } };
+                this.dynamicObjects = new THREE.Group();
+                this.grid = null;
+                
+                this.initEngine();
+                this.initUI();
+                this.update();
             }
-            init() {
+
+            initEngine() {
                 this.scene = new THREE.Scene();
-                this.scene.background = new THREE.Color(APP_CONFIG.colors.bg);
-                this.camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-                this.camera.position.set(12, 10, 12);
-                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.scene.background = new THREE.Color(CONFIG.colors.bg);
+                
                 const wrapper = document.getElementById('canvas-wrapper');
-                this.renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+                const width = wrapper.clientWidth || window.innerWidth - 440;
+                const height = wrapper.clientHeight || window.innerHeight;
+
+                this.camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
+                this.camera.position.set(12, 10, 14);
+
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setSize(width, height);
                 wrapper.appendChild(this.renderer.domElement);
+
                 this.controls = new OrbitControls(this.camera, this.renderer.domElement);
                 this.controls.enableDamping = true;
-                const light = new THREE.AmbientLight(0xffffff, 0.9);
-                this.scene.add(light);
-                const sun = new THREE.DirectionalLight(0xffffff, 0.6);
-                sun.position.set(15, 20, 10);
+                this.controls.dampingFactor = 0.08;
+
+                // Lighting
+                const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+                this.scene.add(ambient);
+                const sun = new THREE.DirectionalLight(0xffffff, 0.4);
+                sun.position.set(10, 20, 15);
                 this.scene.add(sun);
-                this.scene.add(this.objects.static);
-                this.scene.add(this.objects.dynamic);
+
+                // Setup Scene
                 this.buildReferenceFrame();
-                this.setupUI();
-                this.update();
+                this.scene.add(this.dynamicObjects);
+
+                // Resize handler
+                window.addEventListener('resize', () => this.handleResize());
+                
+                // Render Loop
                 this.animate();
             }
+
             buildReferenceFrame() {
-                const s = APP_CONFIG.scale;
-                const groundGeo = new THREE.CircleGeometry(10, 64);
-                const groundMat = new THREE.MeshBasicMaterial({ 
-                    color: 0xffffff, 
+                const s = CONFIG.cellScale;
+                
+                // Grilla Base
+                this.grid = new THREE.GridHelper(30, 30, CONFIG.colors.grid, CONFIG.colors.grid);
+                this.grid.position.y = -0.01;
+                this.scene.add(this.grid);
+
+                // Celda Cúbica (Unit Cell)
+                const boxGeo = new THREE.BoxGeometry(s, s, s);
+                const edgesGeo = new THREE.EdgesGeometry(boxGeo);
+                const cellLine = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({
+                    color: CONFIG.colors.cell, 
                     transparent: true, 
-                    opacity: 0.5 
-                });
-                const ground = new THREE.Mesh(groundGeo, groundMat);
-                ground.rotation.x = -Math.PI / 2;
-                ground.position.y = -0.01;
-                this.objects.static.add(ground);
-                const grid = new THREE.GridHelper(20, 20, 0xadb5bd, 0xdee2e6);
-                grid.material.opacity = 0.4;
-                grid.material.transparent = true;
-                this.objects.static.add(grid);
-                const geo = new THREE.BoxGeometry(s, s, s);
-                const edges = new THREE.EdgesGeometry(geo);
-                const cell = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({
-                    color: APP_CONFIG.colors.cell, 
-                    transparent: true, 
-                    opacity: 0.9,
-                    linewidth: 2
+                    opacity: 0.25
                 }));
-                cell.position.set(s/2, s/2, s/2);
-                this.objects.static.add(cell);
+                cellLine.position.set(s/2, s/2, s/2);
+                this.scene.add(cellLine);
+
+                // Ejes Técnicos
                 const origin = new THREE.Vector3(0,0,0);
-                const axisLen = 10;
-                this.objects.static.add(new THREE.ArrowHelper(new THREE.Vector3(1,0,0), origin, axisLen, APP_CONFIG.colors.axisX, 0.5, 0.2));
-                this.objects.static.add(new THREE.ArrowHelper(new THREE.Vector3(0,1,0), origin, axisLen, APP_CONFIG.colors.axisY, 0.5, 0.2));
-                this.objects.static.add(new THREE.ArrowHelper(new THREE.Vector3(0,0,1), origin, axisLen, APP_CONFIG.colors.axisZ, 0.5, 0.2));
+                const arrowLen = 10;
+                const headLen = 0.5;
+                const headWidth = 0.3;
+                
+                const axisX = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), origin, arrowLen, CONFIG.colors.axisX, headLen, headWidth);
+                const axisY = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), origin, arrowLen, CONFIG.colors.axisY, headLen, headWidth);
+                const axisZ = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), origin, arrowLen, CONFIG.colors.axisZ, headLen, headWidth);
+                
+                this.scene.add(axisX, axisY, axisZ);
             }
-            setupUI() {
-                const hIn = document.getElementById('h-input');
-                const kIn = document.getElementById('k-input');
-                const lIn = document.getElementById('l-input');
-                document.getElementById('apply-btn').onclick = () => this.update();
-                document.getElementById('reset-cam-btn').onclick = () => this.controls.reset();
-                ['show-plane', 'show-vector', 'show-meta'].forEach(id => {
-                    document.getElementById(id).onchange = () => this.update();
+
+            initUI() {
+                const btnApply = document.getElementById('btn-apply');
+                btnApply.addEventListener('click', () => this.update());
+
+                document.getElementById('btn-reset').addEventListener('click', () => {
+                    this.camera.position.set(12, 10, 14);
+                    this.controls.target.set(2.5, 2.5, 2.5);
+                    this.controls.update();
                 });
-                const cloud = document.getElementById('presets-btn-container');
-                APP_CONFIG.presets.forEach(p => {
-                    const tag = document.createElement('div');
-                    tag.className = 'preset-tag';
-                    tag.textContent = `(${p[0]}${p[1]}${p[2]})`;
-                    tag.onclick = () => {
-                        hIn.value = p[0];
-                        kIn.value = p[1];
-                        lIn.value = p[2];
+
+                ['toggle-plane', 'toggle-vector', 'toggle-grid'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', () => this.handleToggles());
+                });
+
+                // Inputs
+                ['input-h', 'input-k', 'input-l'].forEach(id => {
+                    document.getElementById(id).addEventListener('keydown', (e) => {
+                        if(e.key === 'Enter') this.update();
+                    });
+                });
+
+                // Presets
+                const container = document.getElementById('preset-container');
+                CONFIG.presets.forEach(p => {
+                    const chip = document.createElement('div');
+                    chip.className = 'preset-chip';
+                    chip.textContent = `(${p[0]} ${p[1]} ${p[2]})`;
+                    chip.addEventListener('click', () => {
+                        document.getElementById('input-h').value = p[0];
+                        document.getElementById('input-k').value = p[1];
+                        document.getElementById('input-l').value = p[2];
                         this.update();
-                    };
-                    cloud.appendChild(tag);
+                    });
+                    container.appendChild(chip);
                 });
-                window.onresize = () => {
-                    const wrapper = document.getElementById('canvas-wrapper');
-                    this.camera.aspect = wrapper.clientWidth / wrapper.clientHeight;
-                    this.camera.updateProjectionMatrix();
-                    this.renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
-                    this.renderer.setPixelRatio(window.devicePixelRatio);
-                };
+
+                this.controls.target.set(2.5, 2.5, 2.5);
             }
+
+            handleToggles() {
+                this.grid.visible = document.getElementById('toggle-grid').checked;
+                this.update();
+            }
+
             update() {
                 this.clearDynamic();
-                const h = parseInt(document.getElementById('h-input').value) || 0;
-                const k = parseInt(document.getElementById('k-input').value) || 0;
-                const l = parseInt(document.getElementById('l-input').value) || 0;
-                const visibility = {
-                    plane: document.getElementById('show-plane').checked,
-                    vector: document.getElementById('show-vector').checked,
-                    meta: document.getElementById('show-meta').checked
-                };
-                const err = document.getElementById('status-msg');
+                const h = parseInt(document.getElementById('input-h').value) || 0;
+                const k = parseInt(document.getElementById('input-k').value) || 0;
+                const l = parseInt(document.getElementById('input-l').value) || 0;
+
+                const errorBox = document.getElementById('error-box');
                 if (h === 0 && k === 0 && l === 0) {
-                    err.style.display = 'block';
-                    err.textContent = "Índices (0 0 0) no definen plano.";
+                    errorBox.style.display = 'block';
+                    errorBox.textContent = "Error: (0 0 0) es un plano inválido.";
                     return;
                 }
-                err.style.display = 'none';
-                const shift = { x: h < 0 ? 1 : 0, y: k < 0 ? 1 : 0, z: l < 0 ? 1 : 0 };
-                const intersections = this.computeIntersections(h, k, l, shift);
-                if (visibility.plane && intersections.length >= 3) {
-                    this.renderPlane(intersections);
+                errorBox.style.display = 'none';
+
+                // Lógica de Desplazamiento (Origin Shift) para negativos
+                this.state = { 
+                    h, k, l, 
+                    shift: { 
+                        x: h < 0 ? 1 : 0, 
+                        y: k < 0 ? 1 : 0, 
+                        z: l < 0 ? 1 : 0 
+                    } 
+                };
+                
+                const points = this.computeIntersections();
+                
+                if (document.getElementById('toggle-plane').checked && points.length >= 3) {
+                    this.renderPlane(points);
                 }
-                if (visibility.vector) {
-                    this.renderVector(h, k, l, shift);
+                
+                if (document.getElementById('toggle-vector').checked) {
+                    this.renderVector();
                 }
-                if (visibility.meta && intersections.length > 0) {
-                    this.renderVisualAids(intersections, h, k, l, shift);
-                }
-                this.updateUIText(h, k, l, shift);
+
+                this.updateAnalysisUI(points);
             }
+
+            computeIntersections() {
+                const { h, k, l, shift } = this.state;
+                const points = [];
+                const eps = CONFIG.epsilon;
+
+                // 12 edges of unit cube [0,1]^3
+                const edges = [
+                    // Base (z=0)
+                    [[0,0,0],[1,0,0]], [[1,0,0],[1,1,0]], [[1,1,0],[0,1,0]], [[0,1,0],[0,0,0]],
+                    // Top (z=1)
+                    [[0,0,1],[1,0,1]], [[1,0,1],[1,1,1]], [[1,1,1],[0,1,1]], [[0,1,1],[0,0,1]],
+                    // Pillars
+                    [[0,0,0],[0,0,1]], [[1,0,0],[1,0,1]], [[1,1,0],[1,1,1]], [[0,1,0],[0,1,1]]
+                ];
+
+                edges.forEach(edge => {
+                    const [p1, p2] = edge.map(p => new THREE.Vector3(...p));
+                    const v = new THREE.Vector3().subVectors(p2, p1);
+                    
+                    // Plane Eq: h(x - shift.x) + k(y - shift.y) + l(z - shift.z) = 1
+                    const den = h * v.x + k * v.y + l * v.z;
+                    const num = 1 - (h * (p1.x - shift.x) + k * (p1.y - shift.y) + l * (p1.z - shift.z));
+
+                    if (Math.abs(den) > eps) {
+                        const t = num / den;
+                        if (t >= -eps && t <= 1 + eps) {
+                            const intersection = new THREE.Vector3().addVectors(p1, v.multiplyScalar(t));
+                            points.push(intersection);
+                        }
+                    } else if (Math.abs(num) < eps) {
+                        // Edge is coplanar
+                        points.push(p1, p2);
+                    }
+                });
+
+                // Deduplicate points
+                const uniquePoints = [];
+                points.forEach(p => {
+                    if (!uniquePoints.some(up => up.distanceTo(p) < 1e-4)) {
+                        uniquePoints.push(p);
+                    }
+                });
+
+                if (uniquePoints.length < 3) return uniquePoints;
+
+                // Sort points to form a convex polygon
+                // Calculating centroid
+                const center = new THREE.Vector3(0,0,0);
+                uniquePoints.forEach(p => center.add(p));
+                center.divideScalar(uniquePoints.length);
+
+                // Basis for projection
+                const normal = new THREE.Vector3(h, k, l).normalize();
+                const basisX = new THREE.Vector3().subVectors(uniquePoints[0], center).normalize();
+                const basisY = new THREE.Vector3().crossVectors(normal, basisX).normalize();
+
+                return uniquePoints.sort((a,b) => {
+                    const va = new THREE.Vector3().subVectors(a, center);
+                    const vb = new THREE.Vector3().subVectors(b, center);
+                    return Math.atan2(va.dot(basisY), va.dot(basisX)) - Math.atan2(vb.dot(basisY), vb.dot(basisX));
+                });
+            }
+
+            renderPlane(points) {
+                const s = CONFIG.cellScale;
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+                
+                // Triangulation (Fan)
+                for(let i = 1; i < points.length - 1; i++) {
+                    vertices.push(points[0].x * s, points[0].y * s, points[0].z * s);
+                    vertices.push(points[i].x * s, points[i].y * s, points[i].z * s);
+                    vertices.push(points[i+1].x * s, points[i+1].y * s, points[i+1].z * s);
+                }
+
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                geometry.computeVertexNormals();
+
+                const material = new THREE.MeshPhongMaterial({
+                    color: CONFIG.colors.plane,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.6,
+                    specular: 0x444444,
+                    shininess: 30
+                });
+
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Plane Outline (Edges)
+                const outlineGeo = new THREE.EdgesGeometry(geometry);
+                const outline = new THREE.LineSegments(outlineGeo, new THREE.LineBasicMaterial({ 
+                    color: CONFIG.colors.planeEdge, 
+                    linewidth: 2 
+                }));
+
+                this.dynamicObjects.add(mesh, outline);
+            }
+
+            renderVector() {
+                const s = CONFIG.cellScale;
+                const { h, k, l, shift } = this.state;
+                const dir = new THREE.Vector3(h, k, l).normalize();
+                const origin = new THREE.Vector3(shift.x * s, shift.y * s, shift.z * s);
+                
+                const arrow = new THREE.ArrowHelper(dir, origin, s * 1.4, CONFIG.colors.vector, 0.45, 0.2);
+                this.dynamicObjects.add(arrow);
+            }
+
+            updateAnalysisUI(points) {
+                const { h, k, l, shift } = this.state;
+                const fmt = (v) => v === 0 ? "∞" : (1/v).toFixed(2).replace(/\.00$/, "");
+                
+                document.getElementById('val-type').textContent = points.length === 0 ? "Sin Intersección" : `${points.length} Vértices`;
+                document.getElementById('val-x').textContent = fmt(h);
+                document.getElementById('val-y').textContent = fmt(k);
+                document.getElementById('val-z').textContent = fmt(l);
+                
+                const sign = (v) => v >= 0 ? "+" : "";
+                const part = (v, letter) => v === 0 ? "" : `${v === 1 ? "" : v === -1 ? "-" : v}${letter}`;
+                
+                let eqn = [part(h,'x'), part(k,'y'), part(l,'z')].filter(s => s !== "").join(" + ").replace("+ -", "- ");
+                document.getElementById('val-eqn').textContent = eqn ? `${eqn} = 1` : "Paralelo a planos base";
+                
+                document.getElementById('shift-notice').style.display = (shift.x || shift.y || shift.z) ? "block" : "none";
+            }
+
             clearDynamic() {
-                while(this.objects.dynamic.children.length > 0) {
-                    const obj = this.objects.dynamic.children[0];
+                while(this.dynamicObjects.children.length > 0) {
+                    const obj = this.dynamicObjects.children[0];
                     if (obj.geometry) obj.geometry.dispose();
                     if (obj.material) {
                         if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
                         else obj.material.dispose();
                     }
-                    this.objects.dynamic.remove(obj);
+                    this.dynamicObjects.remove(obj);
                 }
             }
-            computeIntersections(h, k, l, shift) {
-                const points = [];
-                const eps = APP_CONFIG.eps;
-                const edges = [
-                    [[0,0,0], [1,0,0]], [[0,1,0], [1,1,0]], [[0,0,1], [1,0,1]], [[0,1,1], [1,1,1]],
-                    [[0,0,0], [0,1,0]], [[1,0,0], [1,1,0]], [[0,0,1], [0,1,1]], [[1,0,1], [1,1,1]],
-                    [[0,0,0], [0,0,1]], [[1,0,0], [1,0,1]], [[0,1,0], [0,1,1]], [[1,1,0], [1,1,1]]
-                ];
-                edges.forEach(edge => {
-                    const [p0, p1] = edge;
-                    const dx = p1[0]-p0[0], dy = p1[1]-p0[1], dz = p1[2]-p0[2];
-                    const den = h*dx + k*dy + l*dz;
-                    const num = 1 - (h*(p0[0]-shift.x) + k*(p0[1]-shift.y) + l*(p0[2]-shift.z));
-                    if (Math.abs(den) > eps) {
-                        const t = num / den;
-                        if (t >= -eps && t <= 1 + eps) {
-                            points.push(new THREE.Vector3(p0[0]+t*dx, p0[1]+t*dy, p0[2]+t*dz));
-                        }
-                    } else if (Math.abs(num) < eps) {
-                        points.push(new THREE.Vector3(...p0), new THREE.Vector3(...p1));
-                    }
-                });
-                const unique = [];
-                points.forEach(p => { if (!unique.some(u => u.distanceTo(p) < 1e-4)) unique.push(p); });
-                if (unique.length < 3) return unique;
-                const center = new THREE.Vector3(0,0,0);
-                unique.forEach(p => center.add(p));
-                center.divideScalar(unique.length);
-                const n = new THREE.Vector3(h, k, l).normalize();
-                const v1 = new THREE.Vector3().subVectors(unique[0], center).normalize();
-                const v2 = new THREE.Vector3().crossVectors(n, v1).normalize();
-                return unique.sort((a,b) => {
-                    const da = new THREE.Vector3().subVectors(a, center);
-                    const db = new THREE.Vector3().subVectors(b, center);
-                    return Math.atan2(da.dot(v2), da.dot(v1)) - Math.atan2(db.dot(v2), db.dot(v1));
-                });
+
+            handleResize() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                const width = wrapper.clientWidth;
+                const height = wrapper.clientHeight;
+                
+                this.camera.aspect = width / height;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(width, height);
             }
-            renderPlane(intersections) {
-                const s = APP_CONFIG.scale;
-                const geo = new THREE.BufferGeometry();
-                const vertices = [];
-                const p0 = intersections[0];
-                for(let i=1; i<intersections.length-1; i++) {
-                    vertices.push(p0.x*s, p0.y*s, p0.z*s);
-                    vertices.push(intersections[i].x*s, intersections[i].y*s, intersections[i].z*s);
-                    vertices.push(intersections[i+1].x*s, intersections[i+1].y*s, intersections[i+1].z*s);
-                }
-                geo.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-                geo.computeVertexNormals();
-                const mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
-                    color: APP_CONFIG.colors.plane, 
-                    side: THREE.DoubleSide, 
-                    transparent: true, 
-                    opacity: 0.75,
-                    shininess: 60,
-                    emissive: APP_CONFIG.colors.plane,
-                    emissiveIntensity: 0.25
-                }));
-                this.objects.dynamic.add(mesh);
-                const wireGeo = new THREE.EdgesGeometry(geo);
-                const wireLine = new THREE.LineSegments(wireGeo, new THREE.LineBasicMaterial({
-                    color: APP_CONFIG.colors.planeEdges,
-                    linewidth: 3,
-                    transparent: true,
-                    opacity: 0.9
-                }));
-                this.objects.dynamic.add(wireLine);
-            }
-            renderVector(h, k, l, shift) {
-                const s = APP_CONFIG.scale;
-                const dir = new THREE.Vector3(h, k, l).normalize();
-                const origin = new THREE.Vector3(shift.x * s, shift.y * s, shift.z * s);
-                const arrow = new THREE.ArrowHelper(dir, origin, s*1.5, APP_CONFIG.colors.vector, 0.4, 0.12);
-                this.objects.dynamic.add(arrow);
-            }
-            renderVisualAids(points, h, k, l, shift) {
-                const s = APP_CONFIG.scale;
-                const axesInfo = [{v:h, axis:'x', s:shift.x}, {v:k, axis:'y', s:shift.y}, {v:l, axis:'z', s:shift.z}];
-                const dotGeo = new THREE.SphereGeometry(0.18, 16, 16);
-                const dotMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-                axesInfo.forEach(a => {
-                    if (a.v !== 0) {
-                        const dot = new THREE.Mesh(dotGeo, dotMat);
-                        dot.position.x = shift.x * s;
-                        dot.position.y = shift.y * s;
-                        dot.position.z = shift.z * s;
-                        dot.position[a.axis] = (a.s + 1/a.v) * s;
-                        this.objects.dynamic.add(dot);
-                    }
-                });
-                const center = new THREE.Vector3(0,0,0);
-                points.forEach(p => center.add(p));
-                center.divideScalar(points.length).multiplyScalar(s);
-                const startOrigin = new THREE.Vector3(shift.x*s, shift.y*s, shift.z*s);
-                const line = new THREE.Line(
-                    new THREE.BufferGeometry().setFromPoints([startOrigin, center]),
-                    new THREE.LineDashedMaterial({ color: 0x495057, dashSize: 0.3, gapSize: 0.15 })
-                );
-                line.computeLineDistances();
-                this.objects.dynamic.add(line);
-            }
-            updateUIText(h, k, l, shift) {
-                const fmt = (v) => v === 0 ? "∞ (paralelo)" : (1/v).toFixed(2).replace(/\.00$/, "");
-                const shiftNote = (shift.x || shift.y || shift.z) ? `<br><small style="color:var(--text-muted)">* Origen desplazado a (${shift.x},${shift.y},${shift.z}) para visualización</small>` : "";
-                document.getElementById('label-eqn').innerHTML = `${h}(x${shift.x?'-1':''}) + ${k}(y${shift.y?'-1':''}) + ${l}(z${shift.z?'-1':''}) = 1${shiftNote}`;
-                document.getElementById('label-ix').textContent = fmt(h);
-                document.getElementById('label-iy').textContent = fmt(k);
-                document.getElementById('label-iz').textContent = fmt(l);
-                document.getElementById('label-symbol').textContent = `(${h} ${k} ${l})`;
-            }
+
             animate() {
                 requestAnimationFrame(() => this.animate());
                 this.controls.update();
                 this.renderer.render(this.scene, this.camera);
             }
         }
-        new MillerLab();
+
+        // Boot
+        document.addEventListener('DOMContentLoaded', () => {
+            new MillerExplorer();
+        });
     </script>
 </body>
 </html>
