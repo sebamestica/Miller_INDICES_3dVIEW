@@ -66,6 +66,27 @@
             background-color: #ffffff;
             overflow: hidden;
         }
+        #label-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            width: 100%;
+            height: 100%;
+        }
+        .axis-label {
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+            pointer-events: none;
+        }
+        .axis-label.x { background: #2979ff; }
+        .axis-label.y { background: #ff1744; }
+        .axis-label.z { background: #00e676; }
         #canvas-wrapper {
             width: 100%;
             height: 100%;
@@ -213,17 +234,41 @@
             box-shadow: var(--shadow-sm);
         }
 
-        /* Responsive */
+        /* Responsive Improvements */
         @media (max-width: 1100px) {
             #app { flex-direction: column; }
-            #sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border-color); padding: 30px; }
-            #viewport { height: 50vh; min-height: 400px; }
-            #visual-controls { bottom: 16px; right: 16px; }
-        }
-        @media (max-width: 600px) {
-            #sidebar { padding: 20px; }
-            header { margin-bottom: 24px; }
+            #sidebar { 
+                width: 100%; 
+                height: 45vh; 
+                border-right: none; 
+                border-top: 1px solid var(--border-color);
+                box-shadow: 0 -10px 20px rgba(0,0,0,0.05);
+                padding: 20px; 
+                position: relative;
+                overflow-y: auto;
+                order: 2;
+            }
+            #viewport { 
+                height: 55vh; 
+                min-height: 300px; 
+                order: 1;
+            }
+            #visual-controls { bottom: 12px; right: 12px; transform: scale(0.9); transform-origin: bottom right; }
+            header { margin-bottom: 20px; }
+            header h1 { font-size: 1.3rem; }
+            .section { margin-bottom: 24px; }
             .input-grid { gap: 8px; }
+            input[type="number"] { padding: 10px; font-size: 1rem; }
+            .primary-btn { padding: 14px; }
+        }
+
+        @media (max-width: 600px) {
+            #sidebar { height: 50vh; padding: 16px; }
+            #viewport { height: 50vh; }
+            .preset-chip { padding: 6px 10px; font-size: 0.75rem; }
+            .analysis-card { padding: 16px; }
+            #debug-console { height: 120px; }
+            .legend-tag { padding: 6px 10px; font-size: 0.7rem; }
         }
     </style>
 </head>
@@ -279,10 +324,25 @@
                         <span class="data-label">Corte Z (c)</span>
                         <span class="data-value" id="val-z">-</span>
                     </div>
+                    <div class="data-row">
+                        <span class="data-label">Magnitud |V|</span>
+                        <span class="data-value" id="val-mag">-</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-label">Espaciado (d)</span>
+                        <span class="data-value" id="val-space">-</span>
+                    </div>
                     <div class="math-block" id="val-eqn">hx + ky + lz = 1</div>
                     <div id="shift-notice" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 12px; text-align: center; display: none;">
                         * Origen trasladado por índices negativos
                     </div>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2 class="section-title">Depuración Matemática</h2>
+                <div id="debug-console" style="background: #1e1e1e; color: #d4d4d4; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; padding: 12px; border-radius: var(--radius); height: 150px; overflow-y: auto; border: 1px solid #333; margin-top: 10px;">
+                    > Esperando datos...
                 </div>
             </section>
 
@@ -308,9 +368,11 @@
 
         <main id="viewport">
             <div id="canvas-wrapper"></div>
+            <div id="label-container"></div>
             <div id="visual-controls">
+                <button id="btn-reset-float" class="legend-tag" style="pointer-events: auto; cursor: pointer; border: none; background: rgba(0,0,0,0.8); color: #fff; margin-bottom: 8px;">Reset View</button>
                 <div class="legend-tag">Rotación: Clic Izquierdo | Pan: Shift + Clic | Zoom: Rueda</div>
-                <div class="legend-tag">Ejes: X+ (Rojo) Y+ (Verde) Z+ (Azul)</div>
+                <div class="legend-tag">Ejes: X (Azul) Y (Rojo) Z (Verde)</div>
             </div>
         </main>
     </div>
@@ -328,348 +390,372 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
         const CONFIG = {
             cellScale: 5,
+            axisLen: 10,
             epsilon: 1e-6,
             colors: {
                 bg: 0xffffff,
                 plane: 0x2196f3,
-                planeEdge: 0x0d47a1,
-                vector: 0xf44336,
+                planeEdge: 0x1565c0,
+                vector: 0xffa000, 
                 cell: 0x424242,
-                axisX: 0xff1744,
-                axisY: 0x00e676,
-                axisZ: 0x2979ff,
-                grid: 0xe0e0e0
+                axisX: 0x2979ff, // Azul
+                axisY: 0xff1744, // Rojo
+                axisZ: 0x00e676, // Verde
+                grid: 0xf0f0f0
             },
-            presets: [
-                [1,0,0], [1,1,0], [1,1,1], [2,1,0], [0,1,1], [-1,2,1], [3,2,1], [1,0,-1], [2,2,1]
-            ]
+            presets: [[1,0,0], [1,1,0], [1,1,1], [2,1,0], [0,1,1], [-1,2,-1], [3,2,1], [1,0,-1], [2,2,1]]
+        };
+
+        /**
+         * Mapper de Coordenadas Cristalinas (h,k,l) a Coordenadas 3D (Three.js)
+         * Según requerimiento:
+         * X (Blue) -> Dirección Z original (0,0,1)
+         * Y (Red)  -> Dirección X original (1,0,0)
+         * Z (Green)-> Dirección Y original (0,1,0)
+         */
+        const mapCoord = (h, k, l) => {
+            // El usuario quiere X en Z original, Y en X original, Z en Y original
+            // Crystal (h, k, l) -> (y_3d, z_3d, x_3d) ? 
+            // Vamos a definirlo así:
+            // Un vector (1,0,0) [h] -> Dirección (0,0,1) 
+            // Un vector (0,1,0) [k] -> Dirección (1,0,0)
+            // Un vector (0,0,1) [l] -> Dirección (0,1,0)
+            return new THREE.Vector3(k, l, h).multiplyScalar(CONFIG.cellScale);
         };
 
         class MillerExplorer {
             constructor() {
                 this.state = { h: 1, k: 1, l: 1, shift: { x: 0, y: 0, z: 0 } };
                 this.dynamicObjects = new THREE.Group();
-                this.grid = null;
-                
                 this.initEngine();
                 this.initUI();
                 this.update();
+                console.log("MillerExplorer Initialized");
             }
 
             initEngine() {
+                const wrapper = document.getElementById('canvas-wrapper');
+                const width = wrapper.clientWidth;
+                const height = wrapper.clientHeight;
+
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(CONFIG.colors.bg);
-                
-                const wrapper = document.getElementById('canvas-wrapper');
-                const width = wrapper.clientWidth || window.innerWidth - 440;
-                const height = wrapper.clientHeight || window.innerHeight;
 
-                this.camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 1000);
-                this.camera.position.set(12, 10, 14);
+                this.camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+                this.camera.position.set(15, 12, 18);
 
-                this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
                 this.renderer.setSize(width, height);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
                 wrapper.appendChild(this.renderer.domElement);
+
+                this.labelRenderer = new CSS2DRenderer();
+                this.labelRenderer.setSize(width, height);
+                this.labelRenderer.domElement.style.position = 'absolute';
+                this.labelRenderer.domElement.style.top = '0';
+                this.labelRenderer.domElement.style.pointerEvents = 'none';
+                document.getElementById('label-container').appendChild(this.labelRenderer.domElement);
 
                 this.controls = new OrbitControls(this.camera, this.renderer.domElement);
                 this.controls.enableDamping = true;
-                this.controls.dampingFactor = 0.08;
+                this.controls.target.set(2, 2, 2);
 
-                // Lighting
-                const ambient = new THREE.AmbientLight(0xffffff, 0.9);
+                const ambient = new THREE.AmbientLight(0xffffff, 1.2);
                 this.scene.add(ambient);
-                const sun = new THREE.DirectionalLight(0xffffff, 0.4);
-                sun.position.set(10, 20, 15);
+                
+                const sun = new THREE.DirectionalLight(0xffffff, 0.6);
+                sun.position.set(10, 20, 10);
                 this.scene.add(sun);
 
-                // Setup Scene
-                this.buildReferenceFrame();
                 this.scene.add(this.dynamicObjects);
+                this.buildStaticScene();
 
-                // Resize handler
-                window.addEventListener('resize', () => this.handleResize());
-                
-                // Render Loop
+                window.addEventListener('resize', () => this.onResize());
                 this.animate();
             }
 
-            buildReferenceFrame() {
-                const s = CONFIG.cellScale;
-                
-                // Grilla Base
-                this.grid = new THREE.GridHelper(30, 30, CONFIG.colors.grid, CONFIG.colors.grid);
-                this.grid.position.y = -0.01;
-                this.scene.add(this.grid);
+            buildStaticScene() {
+                const grid = new THREE.GridHelper(40, 40, CONFIG.colors.grid, CONFIG.colors.grid);
+                grid.position.y = -0.05;
+                this.scene.add(grid);
 
-                // Celda Cúbica (Unit Cell)
-                const boxGeo = new THREE.BoxGeometry(s, s, s);
-                const edgesGeo = new THREE.EdgesGeometry(boxGeo);
-                const cellLine = new THREE.LineSegments(edgesGeo, new THREE.LineBasicMaterial({
-                    color: CONFIG.colors.cell, 
-                    transparent: true, 
-                    opacity: 0.25
-                }));
-                cellLine.position.set(s/2, s/2, s/2);
-                this.scene.add(cellLine);
-
-                // Ejes Técnicos
+                // Ejes con Mapeo
                 const origin = new THREE.Vector3(0,0,0);
-                const arrowLen = 10;
-                const headLen = 0.5;
-                const headWidth = 0.3;
+                const L = CONFIG.axisLen;
                 
-                const axisX = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), origin, arrowLen, CONFIG.colors.axisX, headLen, headWidth);
-                const axisY = new THREE.ArrowHelper(new THREE.Vector3(0,1,0), origin, arrowLen, CONFIG.colors.axisY, headLen, headWidth);
-                const axisZ = new THREE.ArrowHelper(new THREE.Vector3(0,0,1), origin, arrowLen, CONFIG.colors.axisZ, headLen, headWidth);
+                // Direcciones según mapeo: h->Z(0,0,1), k->X(1,0,0), l->Y(0,1,0)
+                this.addAxis(new THREE.Vector3(0,0,1), CONFIG.colors.axisX, 'X', 'x');
+                this.addAxis(new THREE.Vector3(1,0,0), CONFIG.colors.axisY, 'Y', 'y');
+                this.addAxis(new THREE.Vector3(0,1,0), CONFIG.colors.axisZ, 'Z', 'z');
+
+                // Celda unitaria
+                const s = CONFIG.cellScale;
+                const boxGeo = new THREE.BoxGeometry(s, s, s);
+                const edges = new THREE.EdgesGeometry(boxGeo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.15 }));
+                line.position.set(s/2, s/2, s/2);
                 
-                this.scene.add(axisX, axisY, axisZ);
+                // Pero la celda también debe estar en el cuadrante positivo de nuestro mapeo
+                // Nuestros vectores base son (0,0,1), (1,0,0), (0,1,0)
+                // El cubo está formado por combinaciones de estos.
+                // En Three.js esto sigue siendo un cubo de (s,s,s) centrado en (s/2, s/2, s/2)
+                this.scene.add(line);
+            }
+
+            addAxis(dir, color, labelText, cssClass) {
+                const headLen = 0.8;
+                const headWidth = 0.5;
+                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0,0,0), CONFIG.axisLen, color, headLen, headWidth);
+                this.scene.add(arrow);
+
+                const div = document.createElement('div');
+                div.className = `axis-label ${cssClass}`;
+                div.textContent = labelText;
+                const label = new CSS2DObject(div);
+                label.position.copy(dir.clone().multiplyScalar(CONFIG.axisLen + 0.5));
+                this.scene.add(label);
+            }
+
+            log(msg) {
+                const consoleEl = document.getElementById('debug-console');
+                const line = document.createElement('div');
+                line.textContent = `> [${new Date().toLocaleTimeString()}] ${msg}`;
+                consoleEl.appendChild(line);
+                consoleEl.scrollTop = consoleEl.scrollHeight;
             }
 
             initUI() {
-                const btnApply = document.getElementById('btn-apply');
-                btnApply.addEventListener('click', () => this.update());
-
-                document.getElementById('btn-reset').addEventListener('click', () => {
-                    this.camera.position.set(12, 10, 14);
-                    this.controls.target.set(2.5, 2.5, 2.5);
-                    this.controls.update();
-                });
-
+                document.getElementById('btn-apply').onclick = () => this.update();
+                const reset = () => {
+                   this.camera.position.set(15, 12, 18);
+                   this.controls.target.set(2, 2, 2);
+                   this.controls.update();
+                   this.log("Vista restablecida");
+                };
+                document.getElementById('btn-reset').onclick = reset;
+                document.getElementById('btn-reset-float').onclick = reset;
                 ['toggle-plane', 'toggle-vector', 'toggle-grid'].forEach(id => {
-                    document.getElementById(id).addEventListener('change', () => this.handleToggles());
+                    document.getElementById(id).onchange = () => this.update();
                 });
 
-                // Inputs
-                ['input-h', 'input-k', 'input-l'].forEach(id => {
-                    document.getElementById(id).addEventListener('keydown', (e) => {
-                        if(e.key === 'Enter') this.update();
-                    });
-                });
-
-                // Presets
                 const container = document.getElementById('preset-container');
                 CONFIG.presets.forEach(p => {
                     const chip = document.createElement('div');
                     chip.className = 'preset-chip';
                     chip.textContent = `(${p[0]} ${p[1]} ${p[2]})`;
-                    chip.addEventListener('click', () => {
+                    chip.onclick = () => {
                         document.getElementById('input-h').value = p[0];
                         document.getElementById('input-k').value = p[1];
                         document.getElementById('input-l').value = p[2];
                         this.update();
-                    });
+                    };
                     container.appendChild(chip);
                 });
-
-                this.controls.target.set(2.5, 2.5, 2.5);
-            }
-
-            handleToggles() {
-                this.grid.visible = document.getElementById('toggle-grid').checked;
-                this.update();
             }
 
             update() {
-                this.clearDynamic();
+                this.clear();
                 const h = parseInt(document.getElementById('input-h').value) || 0;
                 const k = parseInt(document.getElementById('input-k').value) || 0;
                 const l = parseInt(document.getElementById('input-l').value) || 0;
 
-                const errorBox = document.getElementById('error-box');
+                this.log(`Procesando (${h} ${k} ${l})...`);
+
                 if (h === 0 && k === 0 && l === 0) {
-                    errorBox.style.display = 'block';
-                    errorBox.textContent = "Error: (0 0 0) es un plano inválido.";
+                    this.log("ERROR: Índice inválido (0,0,0)");
                     return;
                 }
-                errorBox.style.display = 'none';
 
-                // Lógica de Desplazamiento (Origin Shift) para negativos
-                this.state = { 
-                    h, k, l, 
-                    shift: { 
-                        x: h < 0 ? 1 : 0, 
-                        y: k < 0 ? 1 : 0, 
-                        z: l < 0 ? 1 : 0 
-                    } 
-                };
-                
-                const points = this.computeIntersections();
-                
+                // Origin shift for negatives
+                const shift = { x: h < 0 ? 1 : 0, y: k < 0 ? 1 : 0, z: l < 0 ? 1 : 0 };
+                this.state = { h, k, l, shift };
+
+                const points = this.calculateIntersections();
+                this.log(`Intersecciones encontradas: ${points.length}`);
+
                 if (document.getElementById('toggle-plane').checked && points.length >= 3) {
                     this.renderPlane(points);
                 }
-                
                 if (document.getElementById('toggle-vector').checked) {
                     this.renderVector();
                 }
 
-                this.updateAnalysisUI(points);
+                this.updateAnalysis(points);
             }
 
-            computeIntersections() {
+            calculateIntersections() {
                 const { h, k, l, shift } = this.state;
                 const points = [];
                 const eps = CONFIG.epsilon;
 
-                // 12 edges of unit cube [0,1]^3
+                // 12 Aristas del cubo unitario [0,1]^3
                 const edges = [
-                    // Base (z=0)
                     [[0,0,0],[1,0,0]], [[1,0,0],[1,1,0]], [[1,1,0],[0,1,0]], [[0,1,0],[0,0,0]],
-                    // Top (z=1)
                     [[0,0,1],[1,0,1]], [[1,0,1],[1,1,1]], [[1,1,1],[0,1,1]], [[0,1,1],[0,0,1]],
-                    // Pillars
                     [[0,0,0],[0,0,1]], [[1,0,0],[1,0,1]], [[1,1,0],[1,1,1]], [[0,1,0],[0,1,1]]
                 ];
 
-                edges.forEach(edge => {
-                    const [p1, p2] = edge.map(p => new THREE.Vector3(...p));
+                edges.forEach((edge, i) => {
+                    const p1 = new THREE.Vector3(...edge[0]);
+                    const p2 = new THREE.Vector3(...edge[1]);
                     const v = new THREE.Vector3().subVectors(p2, p1);
                     
-                    // Plane Eq: h(x - shift.x) + k(y - shift.y) + l(z - shift.z) = 1
+                    /**
+                     * Ecuación del plano: h(x - x0) + k(y - y0) + l(z - z0) = 1
+                     * Donde (x0, y0, z0) es el origen desplazado (shift).
+                     * Sustituimos r(t) = p1 + t*v en la ec. del plano:
+                     * h(p1.x + t*v.x - x0) + k(p1.y + t*v.y - y0) + l(p1.z + t*v.z - z0) = 1
+                     * t * (h*v.x + k*v.y + l*v.z) = 1 - [h(p1.x-x0) + k(p1.y-y0) + l(p1.z-z0)]
+                     */
                     const den = h * v.x + k * v.y + l * v.z;
                     const num = 1 - (h * (p1.x - shift.x) + k * (p1.y - shift.y) + l * (p1.z - shift.z));
 
                     if (Math.abs(den) > eps) {
                         const t = num / den;
                         if (t >= -eps && t <= 1 + eps) {
-                            const intersection = new THREE.Vector3().addVectors(p1, v.multiplyScalar(t));
+                            const intersection = new THREE.Vector3().addVectors(p1, v.clone().multiplyScalar(THREE.MathUtils.clamp(t, 0, 1)));
                             points.push(intersection);
                         }
                     } else if (Math.abs(num) < eps) {
-                        // Edge is coplanar
+                        // La arista es paralela y está contenida en el plano
                         points.push(p1, p2);
                     }
                 });
 
-                // Deduplicate points
-                const uniquePoints = [];
+                // Deduplicación estricta con epsilon
+                const unique = [];
                 points.forEach(p => {
-                    if (!uniquePoints.some(up => up.distanceTo(p) < 1e-4)) {
-                        uniquePoints.push(p);
-                    }
+                    if (!unique.some(u => u.distanceTo(p) < 1e-5)) unique.push(p);
                 });
 
-                if (uniquePoints.length < 3) return uniquePoints;
+                if (unique.length < 3) return unique;
 
-                // Sort points to form a convex polygon
-                // Calculating centroid
+                // Ordenamiento Robusto (Convex Hull 2D proyectado)
                 const center = new THREE.Vector3(0,0,0);
-                uniquePoints.forEach(p => center.add(p));
-                center.divideScalar(uniquePoints.length);
+                unique.forEach(p => center.add(p));
+                center.divideScalar(unique.length);
 
-                // Basis for projection
+                // Normal al plano para la proyección
                 const normal = new THREE.Vector3(h, k, l).normalize();
-                const basisX = new THREE.Vector3().subVectors(uniquePoints[0], center).normalize();
-                const basisY = new THREE.Vector3().crossVectors(normal, basisX).normalize();
+                
+                // Base ortonormal para el plano
+                let b1 = new THREE.Vector3(1, 0, 0);
+                if (Math.abs(normal.dot(b1)) > 0.9) b1.set(0, 1, 0);
+                b1.crossVectors(normal, b1).normalize();
+                const b2 = new THREE.Vector3().crossVectors(normal, b1).normalize();
 
-                return uniquePoints.sort((a,b) => {
-                    const va = new THREE.Vector3().subVectors(a, center);
-                    const vb = new THREE.Vector3().subVectors(b, center);
-                    return Math.atan2(va.dot(basisY), va.dot(basisX)) - Math.atan2(vb.dot(basisY), vb.dot(basisX));
+                return unique.sort((a,b) => {
+                    const d1 = new THREE.Vector3().subVectors(a, center);
+                    const d2 = new THREE.Vector3().subVectors(b, center);
+                    const angleA = Math.atan2(d1.dot(b2), d1.dot(b1));
+                    const angleB = Math.atan2(d2.dot(b2), d2.dot(b1));
+                    return angleB - angleA; // Anti-horario
                 });
             }
 
             renderPlane(points) {
-                const s = CONFIG.cellScale;
-                const geometry = new THREE.BufferGeometry();
-                const vertices = [];
+                const geo = new THREE.BufferGeometry();
+                const verts = [];
                 
-                // Triangulation (Fan)
-                for(let i = 1; i < points.length - 1; i++) {
-                    vertices.push(points[0].x * s, points[0].y * s, points[0].z * s);
-                    vertices.push(points[i].x * s, points[i].y * s, points[i].z * s);
-                    vertices.push(points[i+1].x * s, points[i+1].y * s, points[i+1].z * s);
+                const mappedPoints = points.map(p => mapCoord(p.x, p.y, p.z));
+
+                // Triangulación por abanico (Fan Triangulation) para polígonos convexos
+                for(let i = 1; i < mappedPoints.length - 1; i++) {
+                    verts.push(mappedPoints[0].x, mappedPoints[0].y, mappedPoints[0].z);
+                    verts.push(mappedPoints[i].x, mappedPoints[i].y, mappedPoints[i].z);
+                    verts.push(mappedPoints[i+1].x, mappedPoints[i+1].y, mappedPoints[i+1].z);
                 }
 
-                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-                geometry.computeVertexNormals();
+                geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+                geo.computeVertexNormals();
 
-                const material = new THREE.MeshPhongMaterial({
-                    color: CONFIG.colors.plane,
-                    side: THREE.DoubleSide,
-                    transparent: true,
-                    opacity: 0.6,
-                    specular: 0x444444,
-                    shininess: 30
-                });
-
-                const mesh = new THREE.Mesh(geometry, material);
+                const mesh = new THREE.Mesh(geo, new THREE.MeshPhongMaterial({
+                    color: CONFIG.colors.plane, 
+                    side: THREE.DoubleSide, 
+                    transparent: true, 
+                    opacity: 0.65, 
+                    shininess: 60,
+                    specular: 0x555555
+                }));
                 
-                // Plane Outline (Edges)
-                const outlineGeo = new THREE.EdgesGeometry(geometry);
-                const outline = new THREE.LineSegments(outlineGeo, new THREE.LineBasicMaterial({ 
+                const edges = new THREE.EdgesGeometry(geo);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ 
                     color: CONFIG.colors.planeEdge, 
-                    linewidth: 2 
+                    linewidth: 2.5 
                 }));
 
-                this.dynamicObjects.add(mesh, outline);
+                this.dynamicObjects.add(mesh, line);
+                
+                // Logging de exactitud
+                points.forEach((p, idx) => {
+                    this.log(`Vértice ${idx+1}: (${p.x.toFixed(3)}, ${p.y.toFixed(3)}, ${p.z.toFixed(3)})`);
+                });
             }
 
             renderVector() {
-                const s = CONFIG.cellScale;
                 const { h, k, l, shift } = this.state;
-                const dir = new THREE.Vector3(h, k, l).normalize();
-                const origin = new THREE.Vector3(shift.x * s, shift.y * s, shift.z * s);
+                const origin = mapCoord(shift.x, shift.y, shift.z);
                 
-                const arrow = new THREE.ArrowHelper(dir, origin, s * 1.4, CONFIG.colors.vector, 0.45, 0.2);
+                // El vector [hkl] en nuestro espacio mapeado:
+                // Un vector unitario (h,k,l) -> h*(0,0,1) + k*(1,0,0) + l*(0,1,0) = (k, l, h)
+                const dir = new THREE.Vector3(k, l, h).normalize();
+                const arrow = new THREE.ArrowHelper(dir, origin, CONFIG.cellScale * 1.5, CONFIG.colors.vector, 0.6, 0.3);
                 this.dynamicObjects.add(arrow);
+                this.log(`Vector normal renderizado en dirección (${dir.x.toFixed(2)}, ${dir.y.toFixed(2)}, ${dir.z.toFixed(2)})`);
             }
 
-            updateAnalysisUI(points) {
+            updateAnalysis(points) {
                 const { h, k, l, shift } = this.state;
-                const fmt = (v) => v === 0 ? "∞" : (1/v).toFixed(2).replace(/\.00$/, "");
+                document.getElementById('val-type').textContent = points.length < 3 ? "Fuera de rango" : `${points.length} Vértices`;
+                const safeFmt = (v) => v === 0 ? "∞" : (1/v).toFixed(2);
+                document.getElementById('val-x').textContent = safeFmt(h);
+                document.getElementById('val-y').textContent = safeFmt(k);
+                document.getElementById('val-z').textContent = safeFmt(l);
                 
-                document.getElementById('val-type').textContent = points.length === 0 ? "Sin Intersección" : `${points.length} Vértices`;
-                document.getElementById('val-x').textContent = fmt(h);
-                document.getElementById('val-y').textContent = fmt(k);
-                document.getElementById('val-z').textContent = fmt(l);
+                const magSq = h*h + k*k + l*l;
+                const mag = Math.sqrt(magSq);
+                document.getElementById('val-mag').textContent = mag.toFixed(3);
+                document.getElementById('val-space').textContent = mag > 0 ? (1/mag).toFixed(4) + " a" : "-";
                 
-                const sign = (v) => v >= 0 ? "+" : "";
-                const part = (v, letter) => v === 0 ? "" : `${v === 1 ? "" : v === -1 ? "-" : v}${letter}`;
+                let eqn = [h?`${h}x`:'', k?`${k}y`:'', l?`${l}z`:''].filter(s=>s).join(' + ').replace('+ -','- ');
+                document.getElementById('val-eqn').textContent = eqn ? `${eqn} = 1` : "N/A";
+                document.getElementById('shift-notice').style.display = (shift.x || shift.y || shift.z) ? 'block' : 'none';
                 
-                let eqn = [part(h,'x'), part(k,'y'), part(l,'z')].filter(s => s !== "").join(" + ").replace("+ -", "- ");
-                document.getElementById('val-eqn').textContent = eqn ? `${eqn} = 1` : "Paralelo a planos base";
-                
-                document.getElementById('shift-notice').style.display = (shift.x || shift.y || shift.z) ? "block" : "none";
+                if (magSq > 0) {
+                    this.log(`Análisis: |V|=${mag.toFixed(3)}, d_spacing=${(1/mag).toFixed(4)}a`);
+                }
             }
 
-            clearDynamic() {
+            clear() {
                 while(this.dynamicObjects.children.length > 0) {
                     const obj = this.dynamicObjects.children[0];
-                    if (obj.geometry) obj.geometry.dispose();
-                    if (obj.material) {
-                        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-                        else obj.material.dispose();
-                    }
+                    if(obj.geometry) obj.geometry.dispose();
+                    if(obj.material) Array.isArray(obj.material)?obj.material.forEach(m=>m.dispose()):obj.material.dispose();
                     this.dynamicObjects.remove(obj);
                 }
             }
 
-            handleResize() {
+            onResize() {
                 const wrapper = document.getElementById('canvas-wrapper');
-                const width = wrapper.clientWidth;
-                const height = wrapper.clientHeight;
-                
-                this.camera.aspect = width / height;
+                this.camera.aspect = wrapper.clientWidth / wrapper.clientHeight;
                 this.camera.updateProjectionMatrix();
-                this.renderer.setSize(width, height);
+                this.renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
+                this.labelRenderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
             }
 
             animate() {
                 requestAnimationFrame(() => this.animate());
                 this.controls.update();
                 this.renderer.render(this.scene, this.camera);
+                this.labelRenderer.render(this.scene, this.camera);
             }
         }
 
-        // Boot
-        document.addEventListener('DOMContentLoaded', () => {
-            new MillerExplorer();
-        });
+        document.addEventListener('DOMContentLoaded', () => new MillerExplorer());
     </script>
 </body>
 </html>
