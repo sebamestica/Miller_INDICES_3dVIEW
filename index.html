@@ -522,17 +522,18 @@
                     return;
                 }
                 err.style.display = 'none';
-                const intersections = this.computeIntersections(h, k, l);
+                const shift = { x: h < 0 ? 1 : 0, y: k < 0 ? 1 : 0, z: l < 0 ? 1 : 0 };
+                const intersections = this.computeIntersections(h, k, l, shift);
                 if (visibility.plane && intersections.length >= 3) {
                     this.renderPlane(intersections);
                 }
                 if (visibility.vector) {
-                    this.renderVector(h, k, l);
+                    this.renderVector(h, k, l, shift);
                 }
                 if (visibility.meta && intersections.length > 0) {
-                    this.renderVisualAids(intersections, h, k, l);
+                    this.renderVisualAids(intersections, h, k, l, shift);
                 }
-                this.updateUIText(h, k, l);
+                this.updateUIText(h, k, l, shift);
             }
             clearDynamic() {
                 while(this.objects.dynamic.children.length > 0) {
@@ -545,7 +546,7 @@
                     this.objects.dynamic.remove(obj);
                 }
             }
-            computeIntersections(h, k, l) {
+            computeIntersections(h, k, l, shift) {
                 const points = [];
                 const eps = APP_CONFIG.eps;
                 const edges = [
@@ -557,7 +558,7 @@
                     const [p0, p1] = edge;
                     const dx = p1[0]-p0[0], dy = p1[1]-p0[1], dz = p1[2]-p0[2];
                     const den = h*dx + k*dy + l*dz;
-                    const num = 1 - (h*p0[0] + k*p0[1] + l*p0[2]);
+                    const num = 1 - (h*(p0[0]-shift.x) + k*(p0[1]-shift.y) + l*(p0[2]-shift.z));
                     if (Math.abs(den) > eps) {
                         const t = num / den;
                         if (t >= -eps && t <= 1 + eps) {
@@ -613,37 +614,43 @@
                 }));
                 this.objects.dynamic.add(wireLine);
             }
-            renderVector(h, k, l) {
+            renderVector(h, k, l, shift) {
                 const s = APP_CONFIG.scale;
                 const dir = new THREE.Vector3(h, k, l).normalize();
-                const arrow = new THREE.ArrowHelper(dir, new THREE.Vector3(0,0,0), s*1.5, APP_CONFIG.colors.vector, 0.4, 0.12);
+                const origin = new THREE.Vector3(shift.x * s, shift.y * s, shift.z * s);
+                const arrow = new THREE.ArrowHelper(dir, origin, s*1.5, APP_CONFIG.colors.vector, 0.4, 0.12);
                 this.objects.dynamic.add(arrow);
             }
-            renderVisualAids(points, h, k, l) {
+            renderVisualAids(points, h, k, l, shift) {
                 const s = APP_CONFIG.scale;
-                const axesInfo = [{v:h, axis:'x'}, {v:k, axis:'y'}, {v:l, axis:'z'}];
+                const axesInfo = [{v:h, axis:'x', s:shift.x}, {v:k, axis:'y', s:shift.y}, {v:l, axis:'z', s:shift.z}];
                 const dotGeo = new THREE.SphereGeometry(0.18, 16, 16);
                 const dotMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
                 axesInfo.forEach(a => {
                     if (a.v !== 0) {
                         const dot = new THREE.Mesh(dotGeo, dotMat);
-                        dot.position[a.axis] = (1/a.v) * s;
+                        dot.position.x = shift.x * s;
+                        dot.position.y = shift.y * s;
+                        dot.position.z = shift.z * s;
+                        dot.position[a.axis] = (a.s + 1/a.v) * s;
                         this.objects.dynamic.add(dot);
                     }
                 });
                 const center = new THREE.Vector3(0,0,0);
                 points.forEach(p => center.add(p));
                 center.divideScalar(points.length).multiplyScalar(s);
+                const startOrigin = new THREE.Vector3(shift.x*s, shift.y*s, shift.z*s);
                 const line = new THREE.Line(
-                    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), center]),
+                    new THREE.BufferGeometry().setFromPoints([startOrigin, center]),
                     new THREE.LineDashedMaterial({ color: 0x495057, dashSize: 0.3, gapSize: 0.15 })
                 );
                 line.computeLineDistances();
                 this.objects.dynamic.add(line);
             }
-            updateUIText(h, k, l) {
+            updateUIText(h, k, l, shift) {
                 const fmt = (v) => v === 0 ? "∞ (paralelo)" : (1/v).toFixed(2).replace(/\.00$/, "");
-                document.getElementById('label-eqn').textContent = `${h}x + ${k}y + ${l}z = 1`;
+                const shiftNote = (shift.x || shift.y || shift.z) ? `<br><small style="color:var(--text-muted)">* Origen desplazado a (${shift.x},${shift.y},${shift.z}) para visualización</small>` : "";
+                document.getElementById('label-eqn').innerHTML = `${h}(x${shift.x?'-1':''}) + ${k}(y${shift.y?'-1':''}) + ${l}(z${shift.z?'-1':''}) = 1${shiftNote}`;
                 document.getElementById('label-ix').textContent = fmt(h);
                 document.getElementById('label-iy').textContent = fmt(k);
                 document.getElementById('label-iz').textContent = fmt(l);
