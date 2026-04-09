@@ -808,14 +808,19 @@
                 return null;
             }
 
-            dedupePoints(points) {
+            dedupePointsWithTolerance(points, epsilon = 1e-6) {
                 const unique = [];
-                const dEps = 1e-5;
-                for (const p of points) {
-                    if (!unique.some(u => u.distanceTo(p) < dEps)) {
-                        unique.push(p);
-                    }
+
+                for (let p of points) {
+                    const exists = unique.some(u =>
+                        Math.abs(u.x - p.x) < epsilon &&
+                        Math.abs(u.y - p.y) < epsilon &&
+                        Math.abs(u.z - p.z) < epsilon
+                    );
+
+                    if (!exists) unique.push(p);
                 }
+
                 return unique;
             }
 
@@ -841,7 +846,7 @@
                     } else if(Math.abs(num) < eps) { points.push(p1, p2); }
                 });
                 
-                const unique = this.dedupePoints(points);
+                const unique = this.dedupePointsWithTolerance(points);
                 const normal = new THREE.Vector3(k, l, h).normalize();
                 return this.sortCoplanarPoints(unique, normal);
             }
@@ -894,7 +899,7 @@
                     }
                 });
 
-                const unique = this.dedupePoints(rawPoints);
+                const unique = this.dedupePointsWithTolerance(rawPoints);
                 if (unique.length < 3) return unique;
 
                 return this.sortCoplanarPoints(unique, normal.clone().normalize());
