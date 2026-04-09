@@ -841,7 +841,7 @@
                     } else if(Math.abs(num) < eps) { points.push(p1, p2); }
                 });
                 
-                const unique = this.dedupePointsWithTolerance(points, eps);
+                const unique = this.dedupePoints(points);
                 const normal = new THREE.Vector3(k, l, h).normalize();
                 return this.sortCoplanarPoints(unique, normal);
             }
