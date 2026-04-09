@@ -37,12 +37,13 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            margin: 0;
         }
         #app {
             display: flex;
             flex-direction: row;
             flex: 1;
-            height: 100vh;
+            height: 100%;
             overflow: hidden;
         }
         #sidebar {
@@ -231,23 +232,42 @@
         }
 
         @media (max-width: 1100px) {
-            #app { flex-direction: column-reverse; height: 100vh; }
-            #sidebar { 
-                width: 100%; 
-                flex: 1; 
-                height: auto;
-                border-right: none; 
-                border-top: 1px solid var(--border-color); 
-                padding: 24px;
+            body { 
+                height: auto; 
+                min-height: 100svh; 
+                overflow-y: auto; 
+                overflow-x: hidden; 
+            }
+            #app { 
+                flex-direction: column; 
+                height: auto; 
+                overflow: visible; 
             }
             #viewport { 
                 width: 100%;
-                height: 45vh; 
+                height: 50svh; 
+                min-height: 350px;
+                max-height: 550px;
                 flex-shrink: 0;
+                order: 1; 
+                border-bottom: 2px solid var(--accent-color);
             }
-            header h1 { font-size: 1.3rem; }
-            .coord-input, .primary-btn, .tab-btn { padding: 14px; }
-            .section { margin-bottom: 24px; }
+            #sidebar { 
+                width: 100%; 
+                flex: auto; 
+                height: auto;
+                border-right: none; 
+                border-top: none; 
+                padding: 24px 16px;
+                order: 2;
+                overflow: visible;
+            }
+            header h1 { font-size: 1.5rem; letter-spacing: -0.02em; }
+            .coord-input { padding: 16px; font-size: 1.25rem; font-weight: 700; border-radius: 12px; }
+            .primary-btn { padding: 18px; font-size: 1.1rem; border-radius: 12px; box-shadow: var(--shadow-sm); }
+            .tab-btn { padding: 16px; font-size: 0.95rem; }
+            .section { margin-bottom: 32px; }
+            .section-title { font-size: 0.9rem; margin-bottom: 20px; }
         }
     </style>
 </head>
@@ -270,17 +290,17 @@
                 
                 <!-- Cubic Inputs -->
                 <div id="inputs-cubic" class="input-grid grid-3">
-                    <div class="input-box"><label>h</label><input type="text" inputmode="numeric" class="coord-input" id="c-h" value="1"></div>
-                    <div class="input-box"><label>k</label><input type="text" inputmode="numeric" class="coord-input" id="c-k" value="1"></div>
-                    <div class="input-box"><label>l</label><input type="text" inputmode="numeric" class="coord-input" id="c-l" value="1"></div>
+                    <div class="input-box"><label>h</label><input type="text" class="coord-input" id="c-h" value="1" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                    <div class="input-box"><label>k</label><input type="text" class="coord-input" id="c-k" value="1" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                    <div class="input-box"><label>l</label><input type="text" class="coord-input" id="c-l" value="1" autocomplete="off" autocorrect="off" spellcheck="false"></div>
                 </div>
 
                 <!-- Hexagonal Inputs -->
                 <div id="inputs-hexagonal" class="input-grid grid-4" style="display: none;">
-                    <div class="input-box"><label>h</label><input type="text" inputmode="numeric" class="coord-input" id="h-h" value="1"></div>
-                    <div class="input-box"><label>k</label><input type="text" inputmode="numeric" class="coord-input" id="h-k" value="0"></div>
-                    <div class="input-box"><label>i</label><input type="text" inputmode="numeric" class="coord-input" id="h-i" value="-1" disabled title="i = -(h+k)"></div>
-                    <div class="input-box"><label>l</label><input type="text" inputmode="numeric" class="coord-input" id="h-l" value="0"></div>
+                    <div class="input-box"><label>h</label><input type="text" class="coord-input" id="h-h" value="1" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                    <div class="input-box"><label>k</label><input type="text" class="coord-input" id="h-k" value="0" autocomplete="off" autocorrect="off" spellcheck="false"></div>
+                    <div class="input-box"><label>i</label><input type="text" class="coord-input" id="h-i" value="-1" disabled title="i = -(h+k)"></div>
+                    <div class="input-box"><label>l</label><input type="text" class="coord-input" id="h-l" value="0" autocomplete="off" autocorrect="off" spellcheck="false"></div>
                 </div>
 
                 <button id="btn-apply" class="primary-btn">Actualizar Escena</button>
@@ -706,8 +726,18 @@
             }
 
             parseIntegerInput(value) {
-                const cleaned = String(value).trim();
-                if (!/^[-]?\d+$/.test(cleaned)) {
+                let cleaned = String(value).trim();
+                // Eliminar comas, puntos, espacios, signos más
+                cleaned = cleaned.replace(/[,.+\s]/g, '');
+                // Capturar si existió signo negativo
+                const hasMinus = cleaned.includes('-');
+                cleaned = cleaned.replace(/-/g, '');
+                if (hasMinus && cleaned.length > 0) {
+                    cleaned = '-' + cleaned;
+                }
+                
+                if (!/^[-]?\d+$/.test(cleaned) || cleaned === '-0') {
+                    if (cleaned === '0' || cleaned === '-0') return 0;
                     return null;
                 }
                 return parseInt(cleaned, 10);
@@ -718,11 +748,18 @@
                 const err = document.getElementById('error-box');
                 err.style.display = 'none';
 
+                const parseAndSync = (id) => {
+                    const el = document.getElementById(id);
+                    const val = this.parseIntegerInput(el.value);
+                    if (val !== null) el.value = val; // Sincronizar UI limpiada
+                    return val;
+                };
+
                 let h, k, i, l;
                 if(this.state.system === 'cubic') {
-                    h = this.parseIntegerInput(document.getElementById('c-h').value);
-                    k = this.parseIntegerInput(document.getElementById('c-k').value);
-                    l = this.parseIntegerInput(document.getElementById('c-l').value);
+                    h = parseAndSync('c-h');
+                    k = parseAndSync('c-k');
+                    l = parseAndSync('c-l');
                     
                     if (h === null || k === null || l === null) {
                         err.textContent = "Error: Ingrese valores enteros válidos (ej: 1, -1, 0)";
@@ -731,11 +768,15 @@
                     }
                     
                     i = 0;
-                    if(h===0 && k===0 && l===0) return;
+                    if(h===0 && k===0 && l===0) {
+                        err.textContent = "Error: (0 0 0) es el origen, no define un plano.";
+                        err.style.display = 'block';
+                        return;
+                    }
                 } else {
-                    h = this.parseIntegerInput(document.getElementById('h-h').value);
-                    k = this.parseIntegerInput(document.getElementById('h-k').value);
-                    l = this.parseIntegerInput(document.getElementById('h-l').value);
+                    h = parseAndSync('h-h');
+                    k = parseAndSync('h-k');
+                    l = parseAndSync('h-l');
                     
                     if (h === null || k === null || l === null) {
                         err.textContent = "Error: Ingrese valores enteros válidos (ej: 1, -1, 0)";
@@ -745,7 +786,11 @@
 
                     i = -(h + k);
                     document.getElementById('h-i').value = i;
-                    if(h===0 && k===0 && i===0 && l===0) return;
+                    if(h===0 && k===0 && i===0 && l===0) {
+                        err.textContent = "Error: (0 0 0 0) es el origen, no define un plano.";
+                        err.style.display = 'block';
+                        return;
+                    }
                 }
 
                 this.state.h = h; this.state.k = k; this.state.i = i; this.state.l = l;
