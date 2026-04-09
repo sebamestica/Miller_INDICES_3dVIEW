@@ -141,7 +141,7 @@
         .grid-4 { grid-template-columns: repeat(4, 1fr); }
         
         .input-box label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); text-align: center;}
-        input[type="number"] {
+        .coord-input {
             width: 100%;
             padding: 10px;
             border: 1px solid var(--border-color);
@@ -151,7 +151,7 @@
             outline: none;
             text-align: center;
         }
-        input[type="number"]:focus { border-color: var(--accent-color); }
+        .coord-input:focus { border-color: var(--accent-color); }
         input[disabled] { background: #f1f3f5; cursor: not-allowed; }
 
         .primary-btn {
@@ -246,7 +246,7 @@
                 flex-shrink: 0;
             }
             header h1 { font-size: 1.3rem; }
-            input[type="number"], .primary-btn, .tab-btn { padding: 14px; }
+            .coord-input, .primary-btn, .tab-btn { padding: 14px; }
             .section { margin-bottom: 24px; }
         }
     </style>
@@ -270,17 +270,17 @@
                 
                 <!-- Cubic Inputs -->
                 <div id="inputs-cubic" class="input-grid grid-3">
-                    <div class="input-box"><label>h</label><input type="number" id="c-h" value="1"></div>
-                    <div class="input-box"><label>k</label><input type="number" id="c-k" value="1"></div>
-                    <div class="input-box"><label>l</label><input type="number" id="c-l" value="1"></div>
+                    <div class="input-box"><label>h</label><input type="text" inputmode="numeric" class="coord-input" id="c-h" value="1"></div>
+                    <div class="input-box"><label>k</label><input type="text" inputmode="numeric" class="coord-input" id="c-k" value="1"></div>
+                    <div class="input-box"><label>l</label><input type="text" inputmode="numeric" class="coord-input" id="c-l" value="1"></div>
                 </div>
 
                 <!-- Hexagonal Inputs -->
                 <div id="inputs-hexagonal" class="input-grid grid-4" style="display: none;">
-                    <div class="input-box"><label>h</label><input type="number" id="h-h" value="1"></div>
-                    <div class="input-box"><label>k</label><input type="number" id="h-k" value="0"></div>
-                    <div class="input-box"><label>i</label><input type="number" id="h-i" value="-1" disabled title="i = -(h+k)"></div>
-                    <div class="input-box"><label>l</label><input type="number" id="h-l" value="0"></div>
+                    <div class="input-box"><label>h</label><input type="text" inputmode="numeric" class="coord-input" id="h-h" value="1"></div>
+                    <div class="input-box"><label>k</label><input type="text" inputmode="numeric" class="coord-input" id="h-k" value="0"></div>
+                    <div class="input-box"><label>i</label><input type="text" inputmode="numeric" class="coord-input" id="h-i" value="-1" disabled title="i = -(h+k)"></div>
+                    <div class="input-box"><label>l</label><input type="text" inputmode="numeric" class="coord-input" id="h-l" value="0"></div>
                 </div>
 
                 <button id="btn-apply" class="primary-btn">Actualizar Escena</button>
@@ -467,9 +467,13 @@
                 const hK = document.getElementById('h-k');
                 const hI = document.getElementById('h-i');
                 const updateI = () => {
-                   const h = parseInt(hH.value) || 0;
-                   const k = parseInt(hK.value) || 0;
-                   hI.value = -(h + k);
+                   const h = this.parseIntegerInput(hH.value);
+                   const k = this.parseIntegerInput(hK.value);
+                   if (h !== null && k !== null) {
+                       hI.value = -(h + k);
+                   } else {
+                       hI.value = '...';
+                   }
                 };
                 hH.oninput = updateI;
                 hK.oninput = updateI;
@@ -701,6 +705,14 @@
                 });
             }
 
+            parseIntegerInput(value) {
+                const cleaned = String(value).trim();
+                if (!/^[-]?\d+$/.test(cleaned)) {
+                    return null;
+                }
+                return parseInt(cleaned, 10);
+            }
+
             updateScene() {
                 this.clearDynamic();
                 const err = document.getElementById('error-box');
@@ -708,17 +720,29 @@
 
                 let h, k, i, l;
                 if(this.state.system === 'cubic') {
-                    h = parseInt(document.getElementById('c-h').value);
-                    k = parseInt(document.getElementById('c-k').value);
-                    l = parseInt(document.getElementById('c-l').value);
-                    if(isNaN(h)) h=0; if(isNaN(k)) k=0; if(isNaN(l)) l=0;
+                    h = this.parseIntegerInput(document.getElementById('c-h').value);
+                    k = this.parseIntegerInput(document.getElementById('c-k').value);
+                    l = this.parseIntegerInput(document.getElementById('c-l').value);
+                    
+                    if (h === null || k === null || l === null) {
+                        err.textContent = "Error: Ingrese valores enteros válidos (ej: 1, -1, 0)";
+                        err.style.display = 'block';
+                        return;
+                    }
+                    
                     i = 0;
                     if(h===0 && k===0 && l===0) return;
                 } else {
-                    h = parseInt(document.getElementById('h-h').value);
-                    k = parseInt(document.getElementById('h-k').value);
-                    l = parseInt(document.getElementById('h-l').value);
-                    if(isNaN(h)) h=0; if(isNaN(k)) k=0; if(isNaN(l)) l=0;
+                    h = this.parseIntegerInput(document.getElementById('h-h').value);
+                    k = this.parseIntegerInput(document.getElementById('h-k').value);
+                    l = this.parseIntegerInput(document.getElementById('h-l').value);
+                    
+                    if (h === null || k === null || l === null) {
+                        err.textContent = "Error: Ingrese valores enteros válidos (ej: 1, -1, 0)";
+                        err.style.display = 'block';
+                        return;
+                    }
+
                     i = -(h + k);
                     document.getElementById('h-i').value = i;
                     if(h===0 && k===0 && i===0 && l===0) return;
