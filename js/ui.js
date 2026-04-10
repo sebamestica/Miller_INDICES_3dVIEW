@@ -74,10 +74,13 @@ export function bindUIEvents(updateScene) {
     cliInput.onkeypress = (e) => { if(e.key === 'Enter') handleCLI(); };
 
     // Advanced Panel Toggle
-    document.getElementById('btn-open-adv').onclick = () => {
-        AdvancedPanel.openAdvancedPanel();
-        updateScene();
-    };
+    const engToggle = document.getElementById('eng-toggle');
+    if (engToggle) {
+        engToggle.onchange = (e) => {
+            AdvancedPanel.setEngineeringModeEnabled(e.target.checked);
+            updateScene();
+        };
+    }
 }
 
 /**

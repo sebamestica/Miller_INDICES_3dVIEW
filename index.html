@@ -21,7 +21,14 @@
                     <h1>Miller Explorer</h1>
                     <p id="system-subtitle">Laboratorio Cristalográfico Cúbico</p>
                 </div>
-                <button id="btn-open-adv" class="secondary-btn">Modo Ingeniería</button>
+                <!-- Sustituimos el botón antiguo por un toggle moderno y claro -->
+                <div class="eng-toggle-wrapper">
+                    <span class="eng-toggle-label">Modo Ingeniería</span>
+                    <label class="switch">
+                        <input type="checkbox" id="eng-toggle">
+                        <span class="slider round"></span>
+                    </label>
+                </div>
             </div>
         </header>
 

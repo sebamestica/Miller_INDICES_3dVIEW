@@ -26,7 +26,8 @@ export function createInitialState() {
         l: 1,
         planePoints: [],
         shift: { x: 0, y: 0, z: 0 },
-        vecScale: 1.5
+        vecScale: 1.5,
+        isEngineeringModeEnabled: false
     };
 }
 

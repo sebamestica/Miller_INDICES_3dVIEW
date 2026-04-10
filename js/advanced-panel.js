@@ -3,6 +3,7 @@
  * Manages the secondary technical drawer for future feature expansion.
  */
 import { sanitizeIntegerInput } from './ui.js';
+import { getState, updateState } from './state.js';
 
 /**
  * Initializes the Advanced Panel structure and bindings.
@@ -222,10 +223,13 @@ function bindAdvancedPanelEvents(updateScene) {
     });
 
     // Close button
-    document.getElementById('btn-close-adv').onclick = () => {
-        closeAdvancedPanel();
-        updateScene();
-    };
+    const closeBtn = document.getElementById('btn-close-adv');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            setEngineeringModeEnabled(false);
+            updateScene();
+        };
+    }
 }
 
 /**
@@ -335,12 +339,53 @@ export function getAdvancedState() {
     };
 }
 
+export function setEngineeringModeEnabled(enabled) {
+    updateState({ isEngineeringModeEnabled: enabled });
+    
+    const toggle = document.getElementById('eng-toggle');
+    if (toggle) toggle.checked = enabled;
+    
+    if (enabled) {
+        document.getElementById('advanced-panel').classList.add('visible');
+        document.body.classList.add('eng-mode-active');
+    } else {
+        document.getElementById('advanced-panel').classList.remove('visible');
+        document.body.classList.remove('eng-mode-active');
+    }
+    
+    applyEngineeringModeLayout();
+}
+
+export function applyEngineeringModeLayout() {
+    const state = getState();
+    if (!state.isEngineeringModeEnabled) {
+        document.body.style.overflow = '';
+        return;
+    }
+    
+    if (window.innerWidth <= 1000) {
+        // En mobile necesitamos mantener el scroll habilitado para ver el panel bajo el canvas
+        document.body.style.overflow = '';
+    } else {
+        // En desktop, el panel lateral desactiva el scroll principal
+        document.body.style.overflow = 'hidden'; 
+    }
+}
+
+export function toggleEngineeringMode() {
+    const state = getState();
+    setEngineeringModeEnabled(!state.isEngineeringModeEnabled);
+}
+
+export function syncEngineeringPanelStateWithViewport() {
+    applyEngineeringModeLayout();
+}
+
+// Mantenemos estas funciones por si se llaman en otro lado
 export function openAdvancedPanel() {
-    document.getElementById('advanced-panel').classList.add('visible');
-    document.body.style.overflow = 'hidden'; 
+    setEngineeringModeEnabled(true);
 }
 
 export function closeAdvancedPanel() {
-    document.getElementById('advanced-panel').classList.remove('visible');
-    document.body.style.overflow = '';
+    setEngineeringModeEnabled(false);
 }

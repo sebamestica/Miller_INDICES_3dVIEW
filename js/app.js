@@ -29,6 +29,8 @@ function bootstrapApp() {
     UIController.buildPresetsUI(state.system);
     UIController.bindUIEvents(updateSceneGeometry);
     
+    window.addEventListener('resize', AdvancedPanel.syncEngineeringPanelStateWithViewport);
+    
     setTimeout(updateSceneGeometry, 50);
 }
 
