@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { CONFIG } from './state.js';
+import { CONFIG, getState } from './state.js';
 import { buildLatticeGroup } from './lattice-renderer.js';
 
 let scene, camera, renderer, labelRenderer, controls;
@@ -91,41 +91,29 @@ function onResize() {
 }
 
 export function resetCameraView() {
-    if (!staticObjects.children.length) return;
-    
-    // Compute exact bounding box of all objects
-    const box = new THREE.Box3().setFromObject(staticObjects);
-    const dynBox = new THREE.Box3().setFromObject(dynamicObjects);
-    if (!dynBox.isEmpty()) box.expandByObject(dynamicObjects);
-
-    if (box.isEmpty()) return;
-
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-    const size = new THREE.Vector3();
-    box.getSize(size);
-    
-    const maxDim = Math.max(size.x, size.y, size.z);
-    if(maxDim === 0) return;
-    
-    // Math logic for Camera Fitting
-    const fov = camera.fov * (Math.PI / 180);
-    let cameraDistance = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-    
-    // Adjust for extreme Samsung / Desktop wide aspect ratios
-    const aspect = camera.aspect;
-    if (aspect < 1) cameraDistance /= aspect;
-    
     const isMobile = window.innerWidth < 600;
-    const paddingMultiplier = isMobile ? 1.7 : 1.45;
-    cameraDistance *= paddingMultiplier;
-
-    // Use a fixed aesthetic orientation (Isometric baseline)
-    const dir = new THREE.Vector3(0.8, 0.65, 1).normalize();
-    camera.position.copy(center).add(dir.multiplyScalar(cameraDistance));
+    let baseDist = isMobile ? 32 : 24;
+    
+    // Fix for Samsung/tall screens (aspect < 1)
+    const aspect = camera.aspect || (window.innerWidth / window.innerHeight);
+    if (aspect < 1.0) {
+        baseDist /= (aspect * 0.95); // Push camera back safely
+    }
+    
+    // 45 degrees isometric-ish view
+    camera.position.set(baseDist * 0.9, baseDist * 0.7, baseDist);
     
     if (controls) {
-        controls.target.copy(center);
+        try {
+            const state = getState();
+            if (state.system === 'hexagonal') {
+                controls.target.set(0, (CONFIG.scale * 2.2)/2, 0);
+            } else {
+                controls.target.set(CONFIG.scale/2, CONFIG.scale/2, CONFIG.scale/2);
+            }
+        } catch {
+             controls.target.set(5, 5, 5); 
+        }
         controls.update();
     }
 }
