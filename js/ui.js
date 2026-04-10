@@ -21,6 +21,20 @@ export function bindUIEvents(updateScene) {
         };
     });
 
+    const inputs = ['c-h', 'c-k', 'c-l', 'h-h', 'h-k', 'h-l', 'cli-input'];
+    inputs.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.pointerEvents = 'auto';
+            el.oninput = () => {
+                sanitizeIntegerInput(el);
+                updateScene();
+            };
+            el.onkeydown = (e) => e.stopPropagation();
+            el.onkeyup = (e) => e.stopPropagation();
+        }
+    });
+
     // Hexagonal auto-i logic
     const hH = document.getElementById('h-h');
     const hK = document.getElementById('h-k');
@@ -36,12 +50,18 @@ export function bindUIEvents(updateScene) {
     hK.oninput = updateI;
 
     // Inputs Sanitization
-    const allInputs = document.querySelectorAll('.coord-input');
+    const allInputs = document.querySelectorAll('.coord-input, #cli-input');
     allInputs.forEach(input => {
+        // Aseguramos que el input reciba foco y eventos sin interferencias
+        input.style.pointerEvents = 'auto'; 
+        
         input.oninput = (e) => {
             sanitizeIntegerInput(input);
             if (input.id === 'h-h' || input.id === 'h-k') updateI();
         };
+        // Evitar que la escena 3D intercepte teclas cuando el input tiene foco
+        input.onkeydown = (e) => e.stopPropagation();
+        input.onkeyup = (e) => e.stopPropagation();
     });
 
     document.getElementById('btn-apply').onclick = updateScene;

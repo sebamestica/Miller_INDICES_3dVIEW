@@ -147,8 +147,17 @@ header p { font-size: 0.95rem; color: var(--text-muted); }
     font-size: 1.1rem;
     outline: none;
     text-align: center;
+    position: relative;
+    z-index: 100; /* Asegurar que esté por encima de cualquier overlay */
+    pointer-events: auto !important;
+    background: #fff;
+    -webkit-user-select: text;
+    user-select: text;
 }
-.coord-input:focus { border-color: var(--accent-color); }
+.coord-input:focus { 
+    border-color: var(--accent-color); 
+    box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+}
 input[disabled] { background: #f1f3f5; cursor: not-allowed; }
 
 .primary-btn {

@@ -15,12 +15,14 @@ import * as DefectEngine from './defect-engine.js';
 import * as PlaneMetrics from './plane-metrics.js';
 import * as AdvisorEngine from './advisor-engine.js';
 import * as DemoMode from './demo-mode.js';
+import * as FocusManager from './input-focus-fix.js';
 import * as THREE from 'three';
 
 /**
  * Initializes the application flow.
  */
 function bootstrapApp() {
+    FocusManager.initializeFocusManagement();
     SceneController.initializeScene();
     AdvancedPanel.initializeAdvancedPanel(updateSceneGeometry);
     DemoMode.initializeDemoMode(updateSceneGeometry, UIController.switchSystemUI);
@@ -31,7 +33,8 @@ function bootstrapApp() {
     
     window.addEventListener('resize', AdvancedPanel.syncEngineeringPanelStateWithViewport);
     
-    setTimeout(updateSceneGeometry, 50);
+    // Trigger initial render with a small delay for DOM stability
+    setTimeout(updateSceneGeometry, 100);
 }
 
 /**
@@ -39,43 +42,52 @@ function bootstrapApp() {
  */
 function updateSceneGeometry() {
     const state = getState();
+    
+    // Clear before recalculating
     SceneController.clearDynamicObjects();
     UIController.showError(null);
 
     // 1. Sync and Validate Inputs
-    const indices = syncInputs(state.system);
-    if (!indices) return;
+    const indicesResult = syncInputs(state.system);
+    if (!indicesResult) {
+        SceneController.requestRender();
+        return;
+    }
 
     // 2. Identify Coordinate Origin (Shift)
     const shift = { x: 0, y: 0, z: 0 };
     if (state.system === 'cubic') {
-        if (indices.h < 0) shift.x = 1;
-        if (indices.k < 0) shift.y = 1;
-        if (indices.l < 0) shift.z = 1;
+        if (indicesResult.h < 0) shift.x = 1;
+        if (indicesResult.k < 0) shift.y = 1;
+        if (indicesResult.l < 0) shift.z = 1;
     }
 
     // 3. Update global state
-    const updatedState = updateState({ ...indices, shift });
+    const updatedState = updateState({ ...indicesResult, shift });
 
     // 4. Compute Intersections
     let rawPoints = [];
     if (updatedState.system === 'cubic') {
-        rawPoints = GeometryEngine.computePlaneCubeIntersection(indices.h, indices.k, indices.l, shift);
+        rawPoints = GeometryEngine.computePlaneCubeIntersection(updatedState.h, updatedState.k, updatedState.l, shift);
     } else {
-        rawPoints = GeometryEngine.computePlaneHexIntersection(indices.h, indices.k, indices.l);
+        rawPoints = GeometryEngine.computePlaneHexIntersection(updatedState.h, updatedState.k, updatedState.l);
     }
 
     // 5. Build ordered polygon
     const points = GeometryEngine.sortPolygonPoints(rawPoints);
     updateState({ planePoints: points });
 
-    // 6. Update Static Environment only if system changed
+    // 6. Update Static Environment only if system changed or if it's the first build
     if (SceneController.getCurrentSystem() !== updatedState.system) {
         SceneController.buildStaticEnvironment(updatedState.system);
     }
 
-    // 7. Render dynamic geometry
-    if (document.getElementById('toggle-plane').checked) {
+    // 7. Render dynamic geometry (Unified approach)
+    const showPlane = document.getElementById('toggle-plane')?.checked ?? true;
+    const showVector = document.getElementById('toggle-vector')?.checked ?? true;
+    const showOrigin = document.getElementById('toggle-origin')?.checked ?? true;
+
+    if (showPlane) {
         if (points.length >= 3) {
             SceneController.renderPlane(points);
         } else {
@@ -83,11 +95,11 @@ function updateSceneGeometry() {
         }
     }
 
-    if (document.getElementById('toggle-vector').checked) {
+    if (showVector) {
         SceneController.renderNormalVector(updatedState);
     }
 
-    if (document.getElementById('toggle-origin').checked && (shift.x || shift.y || shift.z)) {
+    if (showOrigin && (shift.x || shift.y || shift.z)) {
         SceneController.renderOriginPoint(updatedState);
     }
 
@@ -96,8 +108,9 @@ function updateSceneGeometry() {
 
     // 9. Advanced Analysis (Engineering Mode)
     const adv = AdvancedPanel.getAdvancedState();
-    const isAdvOpen = document.getElementById('advanced-panel').classList.contains('visible');
+    const isAdvOpen = document.getElementById('advanced-panel')?.classList.contains('visible') ?? false;
 
+    // Advanced Analysis is currently optimized for Cubic; partial results for Hex
     if (updatedState.system === 'cubic') {
         const comp = CrystalAnalysis.checkPlaneDirectionCompatibility(
             { h: updatedState.h, k: updatedState.k, l: updatedState.l },
@@ -164,9 +177,19 @@ function updateSceneGeometry() {
         AdvancedPanel.updateAdvisorResults(advisorReport);
 
         // Advanced Rendering
-        if (adv.direction.active) SceneController.renderCrystallographicDirection(adv.direction.u, adv.direction.v, adv.direction.w, updatedState.system);
+        if (adv.direction.active) {
+            SceneController.renderCrystallographicDirection(adv.direction.u, adv.direction.v, adv.direction.w, updatedState.system);
+        }
         SceneController.renderLoadDirection(adv.load.lx, adv.load.ly, adv.load.lz);
         SceneController.renderLattice3D(adv.structure, adv.defect, isAdvOpen);
+    } else {
+        // Hexagonal limited advice
+        AdvancedPanel.updateAdvisorResults({
+             diagnosis: "Sistema hexagonal activo. El motor de análisis avanzado está optimizado para celdas cúbicas (SC/BCC/FCC).",
+             strengths: ["Cálculo de índices Miller-Bravais (hkil) estable."],
+             limitations: ["Análisis de densidad planar no disponible para prismas aún."],
+             recommendations: ["Use la visualización de vector normal para comparar planos basal, prismático y piramidal."]
+        });
     }
     
     // Explicit render requested to support the low-cost idle GPU optimization
@@ -177,7 +200,7 @@ function updateSceneGeometry() {
  * Reads UI inputs and performs validation.
  */
 function syncInputs(system) {
-    const parse = (id) => MathUtils.parseIntegerInput(document.getElementById(id).value);
+    const parse = (id) => MathUtils.parseIntegerInput(document.getElementById(id)?.value);
     
     if (system === 'cubic') {
         const h = parse('c-h'), k = parse('c-k'), l = parse('c-l');
@@ -197,7 +220,8 @@ function syncInputs(system) {
             return null;
         }
         const i = -(h + k);
-        document.getElementById('h-i').value = i;
+        const hiEl = document.getElementById('h-i');
+        if (hiEl) hiEl.value = i;
         
         const hexVal = MathUtils.validateHexIndices(h, k, i, l);
         if (h === 0 && k === 0 && i === 0 && l === 0) {

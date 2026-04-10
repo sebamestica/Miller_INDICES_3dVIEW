@@ -205,10 +205,14 @@ function bindAdvancedPanelEvents(updateScene) {
     inputs.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
+            el.style.pointerEvents = 'auto';
             el.oninput = () => {
                 sanitizeIntegerInput(el);
                 updateScene();
             };
+            // Evitar interferencias con la cámara cuando se escribe en el panel derecho
+            el.onkeydown = (e) => e.stopPropagation();
+            el.onkeyup = (e) => e.stopPropagation();
         }
     });
 
