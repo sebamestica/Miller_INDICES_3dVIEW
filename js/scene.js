@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
-import { CONFIG, getState } from './state.js';
+import { CONFIG, getState, updateState } from './state.js';
 import { buildLatticeGroup } from './lattice-renderer.js';
 
 let scene, camera, renderer, labelRenderer, controls;
