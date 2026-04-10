@@ -69,8 +69,10 @@ function updateSceneGeometry() {
     const points = GeometryEngine.sortPolygonPoints(rawPoints);
     updateState({ planePoints: points });
 
-    // 6. Update Static Environment if needed
-    SceneController.buildStaticEnvironment(updatedState.system);
+    // 6. Update Static Environment only if system changed
+    if (SceneController.getCurrentSystem() !== updatedState.system) {
+        SceneController.buildStaticEnvironment(updatedState.system);
+    }
 
     // 7. Render dynamic geometry
     if (document.getElementById('toggle-plane').checked) {

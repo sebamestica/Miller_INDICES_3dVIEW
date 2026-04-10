@@ -12,6 +12,11 @@ let scene, camera, renderer, labelRenderer, controls;
 const dynamicObjects = new THREE.Group();
 const staticObjects = new THREE.Group();
 let needsRender = true;
+let currentSystem = null;
+
+export function getCurrentSystem() {
+    return currentSystem;
+}
 
 export function requestRender() {
     needsRender = true;
@@ -45,6 +50,12 @@ export function initializeScene() {
     controls.dampingFactor = 0.08;
     controls.rotateSpeed = 0.7; // Smoother rotation for touch
     controls.screenSpacePanning = true;
+    
+    // Detectamos interacción manual para evitar auto-framing molesto
+    controls.addEventListener('start', () => {
+        updateState({ hasUserAdjustedCamera: true });
+    });
+
     controls.addEventListener('change', requestRender);
     
     // Lighting setup for depth and clarity
@@ -95,37 +106,59 @@ function onResize() {
     renderer.setSize(width, height);
     labelRenderer.setSize(width, height);
 
-    // Reframe mathematically
-    resetCameraView();
+    // Reframe - Solo si el cambio es drástico o no hay ajuste previo
+    // El resize es considerado "Cambio Mayor", pero mantenemos target si es posible
+    resetCameraView(false); 
     requestRender();
 }
 
-export function resetCameraView() {
-    const isMobile = window.innerWidth < 600;
+/**
+ * Resets or updates the camera framing.
+ * @param {boolean} force - If true, ignores user interaction state and forces a hard refit.
+ */
+export function resetCameraView(force = true) {
+    const state = getState();
+    
+    // Si el usuario ya ajustó la cámara y no estamos forzando, respetamos su vista COMPLETAMENTE
+    if (state.hasUserAdjustedCamera && !force) {
+        return;
+    }
+
+    if (force) {
+        updateState({ hasUserAdjustedCamera: false });
+    }
+
+    const isMobile = window.innerWidth < 1000;
     let baseDist = isMobile ? 32 : 24;
     
-    // Fix for Samsung/tall screens (aspect < 1)
     const aspect = camera.aspect || (window.innerWidth / window.innerHeight);
     if (aspect < 1.0) {
-        baseDist /= (aspect * 0.95); // Push camera back safely
+        baseDist /= (aspect * 0.95); 
     }
     
-    // 45 degrees isometric-ish view
     camera.position.set(baseDist * 0.9, baseDist * 0.7, baseDist);
+    updateCameraTarget(state.system, true); // Forzamos target en reset
+}
+
+/**
+ * Specifically updates the controls target without jumping the camera.
+ * @param {string} system - The crystal system.
+ * @param {boolean} force - Whether to override user's current target.
+ */
+function updateCameraTarget(system, force = false) {
+    if (!controls) return;
     
-    if (controls) {
-        try {
-            const state = getState();
-            if (state.system === 'hexagonal') {
-                controls.target.set(0, (CONFIG.scale * 2.2)/2, 0);
-            } else {
-                controls.target.set(CONFIG.scale/2, CONFIG.scale/2, CONFIG.scale/2);
-            }
-        } catch {
-             controls.target.set(5, 5, 5); 
-        }
-        controls.update();
+    // Si el usuario ajustó la cámara, no movemos el target automáticamente a menos que se fuerce
+    const state = getState();
+    if (state.hasUserAdjustedCamera && !force) return;
+
+    const s = CONFIG.scale;
+    if (system === 'hexagonal') {
+        controls.target.set(0, (s * 2.2)/2, 0);
+    } else {
+        controls.target.set(s/2, s/2, s/2);
     }
+    controls.update();
 }
 
 export function clearDynamicObjects() {
@@ -144,6 +177,7 @@ export function clearDynamicObjects() {
  * Builds the static environment (grid, reference cube/prism, axis labels).
  */
 export function buildStaticEnvironment(system) {
+    currentSystem = system;
     while(staticObjects.children.length > 0) {
         const obj = staticObjects.children[0];
         if(obj.geometry) obj.geometry.dispose();
@@ -171,11 +205,10 @@ export function buildStaticEnvironment(system) {
         line.position.set(s/2, s/2, s/2);
         staticObjects.add(line);
 
-        // Axes (Centered at origin)
         buildAxisLabels(new THREE.Vector3(0,0,1), CONFIG.colors.a1, 'X (a1)', 'a1');
         buildAxisLabels(new THREE.Vector3(1,0,0), CONFIG.colors.a2, 'Y (a2)', 'a2');
         buildAxisLabels(new THREE.Vector3(0,1,0), CONFIG.colors.c, 'Z (c)', 'c');
-        controls.target.set(s/2, s/2, s/2);
+        updateCameraTarget('cubic', false); // No forzar si el usuario está mirando algo
     } else {
         // 2. Hexagonal Reference (Ghosted)
         const h_height = s * 2.2;
@@ -191,7 +224,7 @@ export function buildStaticEnvironment(system) {
         buildAxisLabels(new THREE.Vector3(Math.cos(2*Math.PI/3), 0, -Math.sin(2*Math.PI/3)), CONFIG.colors.a2, 'a2', 'a2');
         buildAxisLabels(new THREE.Vector3(Math.cos(4*Math.PI/3), 0, -Math.sin(4*Math.PI/3)), CONFIG.colors.a3, 'a3', 'a3');
         buildAxisLabels(new THREE.Vector3(0, 1, 0), CONFIG.colors.c, 'c', 'c');
-        controls.target.set(0, h_height/2, 0);
+        updateCameraTarget('hexagonal', false);
     }
 }
 

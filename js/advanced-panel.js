@@ -42,9 +42,9 @@ export function initializeAdvancedPanel(updateScene) {
                         <input type="checkbox" id="adv-toggle-dir"> Activar dirección [u v w]
                     </label>
                     <div id="adv-dir-inputs" class="input-grid grid-3" style="opacity: 0.5; pointer-events: none;">
-                        <div class="input-box small"><label>u</label><input type="text" class="coord-input" id="adv-u" value="1" inputmode="decimal"></div>
-                        <div class="input-box small"><label>v</label><input type="text" class="coord-input" id="adv-v" value="-1" inputmode="decimal"></div>
-                        <div class="input-box small"><label>w</label><input type="text" class="coord-input" id="adv-w" value="0" inputmode="decimal"></div>
+                        <div class="input-box small"><label>u</label><input type="text" class="coord-input" id="adv-u" value="1" inputmode="text"></div>
+                        <div class="input-box small"><label>v</label><input type="text" class="coord-input" id="adv-v" value="-1" inputmode="text"></div>
+                        <div class="input-box small"><label>w</label><input type="text" class="coord-input" id="adv-w" value="0" inputmode="text"></div>
                     </div>
                     <div id="adv-geo-results" class="analysis-card mini" style="margin-top: 15px; display: none; padding: 15px; border-style: dashed;">
                         <div class="data-row" style="font-size: 0.8rem;"><span>h·u + k·v + l·w</span><span id="adv-val-cond" style="font-family: 'JetBrains Mono'; font-weight: 700;">-</span></div>
@@ -70,9 +70,9 @@ export function initializeAdvancedPanel(updateScene) {
                 <div class="adv-tool-box">
                     <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Dirección de Carga [X Y Z]</span>
                     <div id="adv-load-inputs" class="input-grid grid-3" style="margin-top: 10px;">
-                        <div class="input-box small"><label>Lx</label><input type="text" class="coord-input" id="adv-lx" value="1" inputmode="decimal"></div>
-                        <div class="input-box small"><label>Ly</label><input type="text" class="coord-input" id="adv-ly" value="0" inputmode="decimal"></div>
-                        <div class="input-box small"><label>Lz</label><input type="text" class="coord-input" id="adv-lz" value="0" inputmode="decimal"></div>
+                        <div class="input-box small"><label>Lx</label><input type="text" class="coord-input" id="adv-lx" value="1" inputmode="text"></div>
+                        <div class="input-box small"><label>Ly</label><input type="text" class="coord-input" id="adv-ly" value="0" inputmode="text"></div>
+                        <div class="input-box small"><label>Lz</label><input type="text" class="coord-input" id="adv-lz" value="0" inputmode="text"></div>
                     </div>
                     <div id="adv-schmid-results" class="analysis-card mini" style="margin-top: 15px; background: #fffdf2; border-color: #feeaa0; padding: 15px;">
                         <div class="data-row small"><span>Ángulo Phi (&phi;)</span><span id="schmid-val-phi">-</span></div>

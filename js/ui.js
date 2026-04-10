@@ -45,7 +45,7 @@ export function bindUIEvents(updateScene) {
     });
 
     document.getElementById('btn-apply').onclick = updateScene;
-    document.getElementById('btn-reset').onclick = resetCameraView;
+    document.getElementById('btn-reset').onclick = () => resetCameraView(true);
 
     ['toggle-plane', 'toggle-vector', 'toggle-origin'].forEach(id => {
         document.getElementById(id).onchange = updateScene;
@@ -88,13 +88,13 @@ export function bindUIEvents(updateScene) {
  */
 export function sanitizeIntegerInput(el) {
     let val = el.value;
-    // Remove anything that isn't a digit, or the first minus sign
+    // Permite solo caracteres de dígitos y el signo menos
     let sanitized = val.replace(/[^-0-9]/g, '');
     
-    // Handle multiple minus signs: only one allowed at start
-    if (sanitized.indexOf('-') > 0) {
-        sanitized = sanitized[0] + sanitized.slice(1).replace(/-/g, '');
-    }
+    // Si hay un signo menos, que solo sea el primer carácter
+    const isNegative = sanitized.startsWith('-');
+    const digitsOnly = sanitized.replace(/-/g, '');
+    sanitized = (isNegative ? '-' : '') + digitsOnly;
     
     if (val !== sanitized) {
         el.value = sanitized;
