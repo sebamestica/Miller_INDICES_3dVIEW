@@ -11,6 +11,11 @@ import { buildLatticeGroup } from './lattice-renderer.js';
 let scene, camera, renderer, labelRenderer, controls;
 const dynamicObjects = new THREE.Group();
 const staticObjects = new THREE.Group();
+let needsRender = true;
+
+export function requestRender() {
+    needsRender = true;
+}
 
 /**
  * Initializes the Three.js viewport with professional defaults.
@@ -23,9 +28,9 @@ export function initializeScene() {
     camera = new THREE.PerspectiveCamera(40, wrapper.clientWidth/wrapper.clientHeight, 0.1, 1000);
     resetCameraView();
 
-    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(wrapper.clientWidth, wrapper.clientHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // Capped at 1.5 for performance
     wrapper.appendChild(renderer.domElement);
 
     labelRenderer = new CSS2DRenderer();
@@ -40,6 +45,7 @@ export function initializeScene() {
     controls.dampingFactor = 0.08;
     controls.rotateSpeed = 0.7; // Smoother rotation for touch
     controls.screenSpacePanning = true;
+    controls.addEventListener('change', requestRender);
     
     // Lighting setup for depth and clarity
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
@@ -59,9 +65,12 @@ export function initializeScene() {
 
 function animate() {
     requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-    labelRenderer.render(scene, camera);
+    const moved = controls.update();
+    if (needsRender || moved) {
+        renderer.render(scene, camera);
+        labelRenderer.render(scene, camera);
+        needsRender = false;
+    }
 }
 
 function onResize() {
@@ -82,12 +91,13 @@ function onResize() {
     camera.updateProjectionMatrix();
     
     // Robust Samsung/Android high-DPR performance constraint
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.setSize(width, height);
     labelRenderer.setSize(width, height);
 
     // Reframe mathematically
     resetCameraView();
+    requestRender();
 }
 
 export function resetCameraView() {

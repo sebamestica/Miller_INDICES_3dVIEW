@@ -102,14 +102,54 @@ export function initializeAdvancedPanel(updateScene) {
             content = `
                 <div class="adv-tool-box">
                     <div class="analysis-card mini" style="background: #fafbfc; border: none; padding: 15px;">
-                        <div class="data-row small"><span>Área de Intersección</span><span id="cryst-val-area" class="tag-score" style="font-weight:700;">-</span></div>
-                        <div class="data-row small"><span>Átomos Interceptados</span><span id="cryst-val-atoms" class="tag-score" style="font-weight:700;">-</span></div>
+                        
+                        <div style="margin-bottom:15px;">
+                            <div class="data-row small"><span>Área Geométrica (<span id="cryst-val-struct-name">-</span>)</span><span id="cryst-val-area" class="tag-score" style="font-weight:700;">-</span></div>
+                            <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-muted); background: #eee; padding: 6px; border-radius: 4px; margin-top: 6px; line-height: 1.4;">
+                                Fórmula: A_plano = ½Σ||(P_i - P_0) × (P_{i+1} - P_0)||
+                            </div>
+                        </div>
+
+                        <div class="data-row small"><span>Átomos Interceptados (N_plano)</span><span id="cryst-val-atoms" class="tag-score" style="font-weight:700;">-</span></div>
+                        <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 4px; line-height: 1.3;">La estructura define qué sitios atómicos existen en realidad. Un átomo se contabiliza si yace coplanar al corte (±ε).</p>
+                        
                         <hr style="border:0; border-top:1px solid #eee; margin: 12px 0;">
+                        
                         <div class="data-row"><span>DENSIDAD PLANAR</span><span id="cryst-val-density" style="font-weight: 800; font-family: 'JetBrains Mono'; color:var(--accent-color);">-</span></div>
-                        <div class="data-row" style="margin-top: 8px;"><span>ESTADO</span><span id="cryst-total-rank" style="font-weight: 800; padding: 2px 8px; border-radius:4px; font-size: 0.7rem; color: #fff; background: var(--text-muted);">-</span></div>
-                        <p id="cryst-explanation" style="margin-top: 15px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;"></p>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-secondary); background: #e9ecef; padding: 6px; border-radius: 4px; margin-top: 8px; line-height:1.4;">
+                             Fórmula: ρ_plano = N_plano / A_plano<br>
+                             Sustitución: ρ_plano = <span id="cryst-val-substitution">- / -</span>
+                        </div>
+                        <div class="data-row" style="margin-top: 8px;"><span>ESTADO ρ</span><span id="cryst-total-rank" style="font-weight: 800; padding: 2px 8px; border-radius:4px; font-size: 0.7rem; color: #fff; background: var(--text-muted);">-</span></div>
+                        
+                        <p id="cryst-explanation" style="margin-top: 15px; font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5; white-space: pre-wrap;"></p>
                     </div>
-                    <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 12px; font-style: italic; line-height: 1.3;">* Nota: El área se calcula de forma geométrica exacta en la celda unitaria. El recuento incluye átomos en posiciones compartidas de borde/esquina métricamente consistentes con la intersección plana para fines didácticos simplificados.</p>
+                </div>
+            `;
+        } else if (s.id === 'adv-advisor') {
+            content = `
+                <div class="adv-tool-box">
+                    <div class="analysis-card mini" style="background: rgba(255,255,255,0.8); border: 1px solid #e0e4e8; padding: 15px;">
+                        <div style="margin-bottom: 15px;">
+                            <span style="font-weight: 800; font-size: 0.7rem; color: var(--accent-color); letter-spacing: 1px; text-transform: uppercase;">1. Diagnóstico Actual</span>
+                            <p id="advr-diagnosis" style="margin-top: 6px; font-size: 0.8rem; color: var(--text-main); line-height: 1.4; font-weight: 500;">Esperando datos de la escena plana...</p>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <span style="font-weight: 800; font-size: 0.7rem; color: var(--success); letter-spacing: 1px; text-transform: uppercase;">2. Factores Favorables</span>
+                            <ul id="advr-strengths" style="margin-top: 6px; padding-left: 15px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; list-style-type: disc;"></ul>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <span style="font-weight: 800; font-size: 0.7rem; color: var(--danger); letter-spacing: 1px; text-transform: uppercase;">3. Factores Limitantes</span>
+                            <ul id="advr-limitations" style="margin-top: 6px; padding-left: 15px; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; list-style-type: disc;"></ul>
+                        </div>
+                        
+                        <div style="margin-bottom: 5px; padding-top: 10px; border-top: 1px solid #eee;">
+                            <span style="font-weight: 800; font-size: 0.7rem; color: var(--text-muted); letter-spacing: 1px; text-transform: uppercase;">4. Recomendaciones Técnicas</span>
+                            <ul id="advr-recommendations" style="margin-top: 6px; padding-left: 15px; font-size: 0.75rem; color: var(--text-muted); line-height: 1.4; list-style-type: circle;"></ul>
+                        </div>
+                    </div>
                 </div>
             `;
         }
@@ -236,14 +276,45 @@ export function updateAdvancedResults(plane, direction, results, mechanism, schm
         crystArea.textContent = cryst.area + ' u²';
         document.getElementById('cryst-val-atoms').textContent = cryst.atoms;
         document.getElementById('cryst-val-density').textContent = cryst.density + ' at/u²';
+        document.getElementById('cryst-val-substitution').textContent = `${cryst.atoms} / ${cryst.area}`;
+        document.getElementById('cryst-val-struct-name').textContent = document.querySelector('input[name="adv-struct"]:checked')?.value.toUpperCase() || 'RED';
         
         if (cryst.explanation) {
              const rankEl = document.getElementById('cryst-total-rank');
              rankEl.textContent = cryst.explanation.rank;
              rankEl.style.background = cryst.explanation.color;
-             document.getElementById('cryst-explanation').textContent = cryst.explanation.text;
+             document.getElementById('cryst-explanation').innerHTML = cryst.explanation.text.replace(/\n\n/g, '<br><br>');
         }
     }
+}
+
+/**
+ * Updates the advisor AI panel with formatted lists and text.
+ */
+export function updateAdvisorResults(report) {
+    if (!report) return;
+    
+    document.getElementById('advr-diagnosis').textContent = report.diagnosis;
+    
+    const fillList = (id, items) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.innerHTML = '';
+        if (!items || items.length === 0) {
+            el.innerHTML = '<li>Sin observaciones en esta categoría.</li>';
+        } else {
+            items.forEach(text => {
+                const li = document.createElement('li');
+                li.style.marginBottom = '4px';
+                li.textContent = text;
+                el.appendChild(li);
+            });
+        }
+    };
+    
+    fillList('advr-strengths', report.strengths);
+    fillList('advr-limitations', report.limitations);
+    fillList('advr-recommendations', report.recommendations);
 }
 
 /**

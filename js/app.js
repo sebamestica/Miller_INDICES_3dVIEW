@@ -13,6 +13,7 @@ import * as MechanismEngine from './mechanism-engine.js';
 import * as SchmidEngine from './schmid-engine.js';
 import * as DefectEngine from './defect-engine.js';
 import * as PlaneMetrics from './plane-metrics.js';
+import * as AdvisorEngine from './advisor-engine.js';
 import * as DemoMode from './demo-mode.js';
 import * as THREE from 'three';
 
@@ -124,7 +125,9 @@ function updateSceneGeometry() {
             area = PlaneMetrics.computePlaneArea(points);
             atomCount = PlaneMetrics.countPlaneAtoms(points, adv.structure, adv.defect);
             rho = PlaneMetrics.computePlanarDensity(area, atomCount);
-            rhoExplanation = PlaneMetrics.explainPlanarDensity(rho);
+            rhoExplanation = PlaneMetrics.explainPlanarDensity(rho, adv.structure);
+        } else {
+            rhoExplanation = { rank: '-', color: 'var(--text-muted)', text: 'No hay polígono geométrico visible en la celda unitaria trazada. No es posible ejecutar un análisis volumétrico para este caso.' };
         }
 
         // Update Advanced Panel
@@ -137,17 +140,33 @@ function updateSceneGeometry() {
             ...schmidData,
             explanation: schmidExp
         }, DefectEngine.getDefectDescription(adv.defect), {
-            area: area.toFixed(3),
-            atoms: atomCount,
-            density: rho.toFixed(3),
+            area: area === 0 ? '-' : area.toFixed(3),
+            atoms: area === 0 ? '-' : atomCount,
+            density: area === 0 || isNaN(rho) ? '-' : rho.toFixed(3),
             explanation: rhoExplanation
         });
         
+        // Advisor Engine
+        const advisorReport = AdvisorEngine.generateAdvisorReport({
+            structure: adv.structure,
+            planeArea: area,
+            planarRhoRank: rhoExplanation ? rhoExplanation.rank : '-',
+            directionActive: adv.direction.active,
+            directionCompatible: comp.liesInPlane,
+            mechanismScore: totalScore,
+            schmidMultiplier: schmidData ? schmidData.multiplier : null,
+            activeDefect: adv.defect
+        });
+        AdvancedPanel.updateAdvisorResults(advisorReport);
+
         // Advanced Rendering
         if (adv.direction.active) SceneController.renderCrystallographicDirection(adv.direction.u, adv.direction.v, adv.direction.w, updatedState.system);
         SceneController.renderLoadDirection(adv.load.lx, adv.load.ly, adv.load.lz);
         SceneController.renderLattice3D(adv.structure, adv.defect, isAdvOpen);
     }
+    
+    // Explicit render requested to support the low-cost idle GPU optimization
+    SceneController.requestRender();
 }
 
 /**

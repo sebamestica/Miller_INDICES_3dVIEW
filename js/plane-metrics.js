@@ -57,9 +57,14 @@ export function computePlanarDensity(area, atomCount) {
     return atomCount / area;
 }
 
-export function explainPlanarDensity(rho) {
-    if (rho === 0 || isNaN(rho)) return { rank: '-', color: 'var(--text-muted)', text: 'Plano truncado o sin átomos compartidos.' };
-    if (rho >= 2.0) return { rank: 'ALTA', color: 'var(--success)', text: 'Alta aglomeración atómica. Fundamental en sistemas de deslizamiento reales.' };
-    if (rho >= 1.0) return { rank: 'MEDIA', color: 'var(--accent-color)', text: 'Compacidad modal. Actividad de deslizamiento posible a altas temperaturas.' };
-    return { rank: 'BAJA', color: 'var(--danger)', text: 'Plano ensanchado poco denso. Deslizamiento improbable sin dislocaciones accesorias complejas.' };
+export function explainPlanarDensity(rho, structureName = "red") {
+    if (rho === 0 || isNaN(rho)) return { rank: '-', color: 'var(--text-muted)', text: 'Plano truncado o sin átomos encontrados que intersecten volumétricamente. La densidad no es evaluable.' };
+    
+    // Base explanation emphasizing separation of Area and SC/BCC/FCC
+    let baseText = `Nota técnica: Mientras que el área geométrica depende únicamente del corte transversal, la estructura física activa [${structureName.toUpperCase()}] establece qué coordenadas atómicas reales intersecan este último, alterando drásticamente el flujo de densidad final.`;
+
+    if (rho >= 2.0) return { rank: 'ALTA', color: 'var(--success)', text: `Alta aglomeración. Fundamental en sistemas de deslizamiento prioritarios.\n\n${baseText}` };
+    if (rho >= 1.0) return { rank: 'MEDIA', color: 'var(--accent-color)', text: `Densidad modal de empaquetaje. Actividad deslizante secundaria requerida.\n\n${baseText}` };
+    
+    return { rank: 'BAJA', color: 'var(--danger)', text: `Plano expansivo subdenso. Deslizamientos improbables sin el apoyo de dislocaciones o variables de temperatura atípicas.\n\n${baseText}` };
 }
