@@ -1,11 +1,8 @@
-/**
- * Miller Explorer - Demo Mode Module
- * Provides a guided technical walkthrough of classical crystallographic scenarios.
- */
-import { updateState } from './state.js';
+
+import { getState, updateState } from './state.js';
 import { closeAdvancedPanel, openAdvancedPanel } from './advanced-panel.js';
 
-const SCENARIOS = [
+const SCENARIOS_CUBIC = [
     {
         name: "Deslizamiento Ideal (FCC)",
         desc: "Plano {111} en estructura FCC. Es el sistema más compacto y favorable para el deslizamiento plástico.",
@@ -32,22 +29,20 @@ const SCENARIOS = [
     }
 ];
 
-let currentScenario = -1;
+let currentScenarioCubic = -1;
 
-/**
- * Initializes the demo mode UI.
- */
+
 export function initializeDemoMode(updateScene, switchUI) {
     const header = document.querySelector('.header-content');
+    if (!header) return;
     const demoBtn = document.createElement('button');
     demoBtn.id = 'btn-demo-mode';
     demoBtn.className = 'secondary-btn highlight';
-    demoBtn.innerHTML = '<span>🎬</span> Demo Guiada';
+    demoBtn.innerHTML = 'Demo Guiada';
     demoBtn.style.marginLeft = '12px';
     demoBtn.onclick = () => runNextScenario(updateScene, switchUI);
     header.appendChild(demoBtn);
 
-    // Create toast for explanation
     const toast = document.createElement('div');
     toast.id = 'demo-toast';
     toast.style.cssText = `
@@ -55,57 +50,73 @@ export function initializeDemoMode(updateScene, switchUI) {
         background: rgba(0,0,0,0.85); color: #fff; padding: 15px 25px;
         border-radius: 50px; font-size: 0.9rem; z-index: 2000;
         display: none; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        max-width: 90%; text-align: center; line-height: 1.4;
+        max-width: 90%; text-align: center; line-height: 1.4; pointer-events: none;
     `;
+    
+    if (window.innerWidth < 1000) {
+        toast.style.bottom = 'auto';
+        toast.style.top = '10px';
+    }
     document.body.appendChild(toast);
 }
 
 function runNextScenario(updateScene, switchUI) {
-    currentScenario = (currentScenario + 1) % SCENARIOS.length;
-    const s = SCENARIOS[currentScenario];
+    // Solo escenarios cúbicos soportados
+    currentScenarioCubic = (currentScenarioCubic + 1) % SCENARIOS_CUBIC.length;
+    const s = SCENARIOS_CUBIC[currentScenarioCubic];
 
-    // Apply main state
-    updateState(s.state);
-    switchUI(s.state.system);
+    import('./app.js').then(app => {
+        // Sistema: siempre cúbico
+        app.switchCrystalSystemSafely('cubic');
+        
+        // Actualizar valores en el estado
+        updateState(s.state);
 
-    // Set UI inputs manually
-    if (s.state.system === 'cubic') {
+        // Actualizar DOM
         document.getElementById('c-h').value = s.state.h;
         document.getElementById('c-k').value = s.state.k;
         document.getElementById('c-l').value = s.state.l;
-    }
 
-    // Set Advanced UI inputs
-    if (s.adv) {
-        document.querySelector(`input[name="adv-struct"][value="${s.adv.structure}"]`).checked = true;
-        document.getElementById('adv-toggle-dir').checked = s.adv.active;
-        document.getElementById('adv-u').value = s.adv.u;
-        document.getElementById('adv-v').value = s.adv.v;
-        document.getElementById('adv-w').value = s.adv.w;
-        if (s.adv.defect) {
-            document.querySelector(`input[name="adv-defect"][value="${s.adv.defect}"]`).checked = true;
-        }
-        if (s.adv.lx !== undefined) {
-             document.getElementById('adv-lx').value = s.adv.lx;
-             document.getElementById('adv-ly').value = s.adv.ly;
-             document.getElementById('adv-lz').value = s.adv.lz;
-        }
-    }
+        if (s.adv) {
+            const radio = document.querySelector(`input[name="adv-struct"][value="${s.adv.structure}"]`);
+            if (radio) radio.checked = true;
+            
+            const toggleDir = document.getElementById('adv-toggle-dir');
+            if (toggleDir) {
+                toggleDir.checked = s.adv.active;
+                // Simular cambio para activar UI dependiente
+                const event = new Event('change');
+                toggleDir.dispatchEvent(event);
+            }
 
-    showTechnicalMessage(s.name, s.desc);
-    
-    // Auto-open advanced panel for these scenarios
-    openAdvancedPanel();
-    
-    updateScene();
+            if (document.getElementById('adv-u')) document.getElementById('adv-u').value = s.adv.u;
+            if (document.getElementById('adv-v')) document.getElementById('adv-v').value = s.adv.v;
+            if (document.getElementById('adv-w')) document.getElementById('adv-w').value = s.adv.w;
+            
+            if (s.adv.defect) {
+                const defRadio = document.querySelector(`input[name="adv-defect"][value="${s.adv.defect}"]`);
+                if (defRadio) defRadio.checked = true;
+            }
+            if (s.adv.lx !== undefined) {
+                 if (document.getElementById('adv-lx')) document.getElementById('adv-lx').value = s.adv.lx;
+                 if (document.getElementById('adv-ly')) document.getElementById('adv-ly').value = s.adv.ly;
+                 if (document.getElementById('adv-lz')) document.getElementById('adv-lz').value = s.adv.lz;
+            }
+        }
+
+        showTechnicalMessage(s.name, s.desc);
+        openAdvancedPanel();
+        updateScene();
+    });
 }
 
 export function showTechnicalMessage(title, message) {
     const toast = document.getElementById('demo-toast');
+    if (!toast) return;
     toast.innerHTML = `<strong>${title}:</strong> ${message}`;
     toast.style.display = 'block';
     toast.style.animation = 'none';
-    toast.offsetHeight; // trigger reflow
+    toast.offsetHeight;
     toast.style.animation = 'fadeInUp 0.5s ease-out';
     
     setTimeout(() => {

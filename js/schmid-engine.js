@@ -1,14 +1,7 @@
-/**
- * Miller Explorer - Schmid Factor Engine
- * Calculates resolved shear stress factor for oriented loading.
- */
+
 import * as THREE from 'three';
 
-/**
- * Computes the Schmid Factor m = cos(phi) * cos(lambda).
- * phi: angle between Normal and Load.
- * lambda: angle between Slip Direction and Load.
- */
+
 export function computeSchmidFactor(normal, slip, load) {
     if (!normal || !slip || !load) return null;
 
@@ -28,9 +21,7 @@ export function computeSchmidFactor(normal, slip, load) {
     };
 }
 
-/**
- * Provides a qualitative assessment of the Schmid factor.
- */
+
 export function explainSchmidFactor(factor) {
     if (factor === null) return { rank: '-', color: 'var(--text-muted)', text: 'Datos insuficientes.' };
 

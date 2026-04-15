@@ -1,8 +1,5 @@
-/**
- * Miller Explorer - Application Controller
- * High-level orchestration of math, geometry, and rendering.
- */
-import { getState, updateState } from './state.js';
+
+import { CONFIG, getState, updateState, getActiveCrystalSystem, setActiveCrystalSystem, syncGlobalContext, shouldUpdateUI } from './state.js';
 import * as MathUtils from './math.js';
 import * as GeometryEngine from './geometry-engine.js';
 import * as SceneController from './scene.js';
@@ -16,223 +13,307 @@ import * as PlaneMetrics from './plane-metrics.js';
 import * as AdvisorEngine from './advisor-engine.js';
 import * as DemoMode from './demo-mode.js';
 import * as FocusManager from './input-focus-fix.js';
+import * as CalculatorPanel from './calculator-panel.js';
+import * as CrystalCalculator from './crystal-calculator.js';
+import * as HCP_ENGINE from './hcp-engine.js';
 import * as THREE from 'three';
 
-/**
- * Initializes the application flow.
- */
+let isSyncing = false;
+
 function bootstrapApp() {
     FocusManager.initializeFocusManagement();
     SceneController.initializeScene();
     AdvancedPanel.initializeAdvancedPanel(updateSceneGeometry);
     DemoMode.initializeDemoMode(updateSceneGeometry, UIController.switchSystemUI);
+    CalculatorPanel.initializeCalculatorPanel();
+    
+    document.getElementById('btn-apply')?.addEventListener('click', updateSceneGeometry);
+    document.getElementById('btn-reset')?.addEventListener('click', () => SceneController.resetCameraView(true));
+    
+    document.getElementById('btn-open-calc')?.addEventListener('click', () => {
+        const state = getState();
+        CalculatorPanel.syncCalculatorWithAppState(state);
+        CalculatorPanel.openCalculatorPanel();
+        updateSceneGeometry(); 
+    });
     
     const state = getState();
     UIController.buildPresetsUI(state.system);
-    UIController.bindUIEvents(updateSceneGeometry);
+    UIController.bindUIEvents(updateSceneGeometry, updateSceneGeometryThrottled);
     
-    window.addEventListener('resize', AdvancedPanel.syncEngineeringPanelStateWithViewport);
+    window.addEventListener('resize', () => {
+        AdvancedPanel.syncEngineeringPanelStateWithViewport();
+    });
     
-    // Trigger initial render with a small delay for DOM stability
+    SceneController.buildStaticEnvironment(state.system);
     setTimeout(updateSceneGeometry, 100);
 }
 
 /**
- * Main update routine. Processes inputs, computes geometry, and triggers re-render.
+ * CAMBIO DE SISTEMA ROBUSTO - Orquestador Único
+ * Garantiza que la escena, la calculadora y los paneles lean del mismo estado real.
  */
-function updateSceneGeometry() {
-    const state = getState();
+export function switchCrystalSystemSafely(newSys) {
+    if (isSyncing) return;
+    const currentSys = getActiveCrystalSystem();
+    if (newSys === currentSys) return;
+
+    isSyncing = true;
+    try {
+        console.log(`[Switch] Transición: ${currentSys} -> ${newSys}`);
+        
+        // 1. Estado core y Sincronización Global
+        setActiveCrystalSystem(newSys);
+        syncGlobalContext();
+        
+        // 2. UI y Controles
+        UIController.switchSystemUI(newSys);
+        AdvancedPanel.updateStructureSelector(); 
+        
+        // 3. Purga y reconstrucción de motor gráfico
+        SceneController.clearDynamicObjects();
+        SceneController.buildStaticEnvironment(newSys);
+        
+        // 4. Sincronización de datos (Calculadora lee del nuevo estado)
+        CalculatorPanel.syncCalculatorWithAppState(getState());
+        updateSceneGeometryInternal();
+        
+        // 5. Encuadre
+        SceneController.resetCameraView(true);
+        
+    } catch (e) {
+        console.error("[Fatal Switch Error]:", e);
+    } finally {
+        isSyncing = false;
+        SceneController.requestRender();
+    }
+}
+
+export function updateSceneGeometry() {
+    if (isSyncing) return;
     
-    // Clear before recalculating
-    SceneController.clearDynamicObjects();
+    // Guard clause para no recalcular si el estado no cambió sustancialmente
+    const state = getState();
+    if (!shouldUpdateUI(state) && !isSyncing) {
+        // En algunos casos queremos forzar (ej. clics en botones), 
+        // pero para inputs continuos esto evita loops.
+    }
+
+    isSyncing = true;
+    try {
+        updateSceneGeometryInternal();
+    } finally {
+        isSyncing = false;
+    }
+}
+
+function updateSceneGeometryInternal() {
+    const currentState = getState();
     UIController.showError(null);
 
-    // 1. Sync and Validate Inputs
-    const indicesResult = syncInputs(state.system);
+    // 1. Sincronización y Validación de inputs
+    const indicesResult = syncInputs(currentState.system);
     if (!indicesResult) {
+        updateTechnicalPanelInvalid();
+        SceneController.clearDynamicObjects(); // Limpia planos y red en caso de error
         SceneController.requestRender();
         return;
     }
 
-    // 2. Identify Coordinate Origin (Shift)
     const shift = { x: 0, y: 0, z: 0 };
-    if (state.system === 'cubic') {
+    if (currentState.system === 'cubic') {
         if (indicesResult.h < 0) shift.x = 1;
         if (indicesResult.k < 0) shift.y = 1;
         if (indicesResult.l < 0) shift.z = 1;
     }
 
-    // 3. Update global state
-    const updatedState = updateState({ ...indicesResult, shift });
+    const isCalcOpen = document.getElementById('calc-panel')?.classList.contains('visible');
+    const calcInputs = isCalcOpen ? CalculatorPanel.getCalculatorInputs() : null;
+    const caRatio = (calcInputs && calcInputs.a > 0 && calcInputs.c > 0) ? (calcInputs.c / calcInputs.a) : currentState.caRatio;
+    
+    // Sincronizar estado core
+    const { state: updatedState } = updateState({ 
+        h: indicesResult.h, k: indicesResult.k, l: indicesResult.l, i: indicesResult.i,
+        shift, caRatio 
+    });
 
-    // 4. Compute Intersections
-    let rawPoints = [];
+    // 2. CAPA BASE: Se reconstruye si el sistema cambió o caRatio es nuevo (implícito en rebuild)
+    // Para simplificar y dar robustez, rebuildSystemBaseGeometry es atómica.
+    SceneController.rebuildSystemBaseGeometry(updatedState.system, updatedState.caRatio);
+    SceneController.rebuildAxisLayer(updatedState.system);
+
+    // 3. CAPA DE PLANOS: Intersección y Render
+    let points = [];
     if (updatedState.system === 'cubic') {
-        rawPoints = GeometryEngine.computePlaneCubeIntersection(updatedState.h, updatedState.k, updatedState.l, shift);
+        const rawPoints = GeometryEngine.computePlaneCubeIntersection(updatedState.indices.h, updatedState.indices.k, updatedState.indices.l, updatedState.shift);
+        points = GeometryEngine.sortPolygonPoints(rawPoints);
     } else {
-        rawPoints = GeometryEngine.computePlaneHexIntersection(updatedState.h, updatedState.k, updatedState.l);
+        const sc = CONFIG.scale;
+        points = HCP_ENGINE.computeHcpPlaneIntersection(
+            updatedState.indices.h, updatedState.indices.k, updatedState.indices.i, updatedState.indices.l, 
+            sc, sc * (updatedState.caRatio || 1.633)
+        );
     }
-
-    // 5. Build ordered polygon
-    const points = GeometryEngine.sortPolygonPoints(rawPoints);
     updateState({ planePoints: points });
 
-    // 6. Update Static Environment only if system changed or if it's the first build
-    if (SceneController.getCurrentSystem() !== updatedState.system) {
-        SceneController.buildStaticEnvironment(updatedState.system);
-    }
-
-    // 7. Render dynamic geometry (Unified approach)
-    const showPlane = document.getElementById('toggle-plane')?.checked ?? true;
-    const showVector = document.getElementById('toggle-vector')?.checked ?? true;
-    const showOrigin = document.getElementById('toggle-origin')?.checked ?? true;
-
-    if (showPlane) {
-        if (points.length >= 3) {
-            SceneController.renderPlane(points);
-        } else {
-            UIController.showError("El plano geométrico es válido, pero su porción intersectada queda fuera de la celda unitaria visible.", "info");
-        }
-    }
-
-    if (showVector) {
-        SceneController.renderNormalVector(updatedState);
-    }
-
-    if (showOrigin && (shift.x || shift.y || shift.z)) {
-        SceneController.renderOriginPoint(updatedState);
-    }
-
-    // 8. Update readout panels
-    UIController.updateTechnicalPanel(updatedState, points);
-
-    // 9. Advanced Analysis (Engineering Mode)
-    const adv = AdvancedPanel.getAdvancedState();
-    const isAdvOpen = document.getElementById('advanced-panel')?.classList.contains('visible') ?? false;
-
-    // Advanced Analysis is currently optimized for Cubic; partial results for Hex
-    if (updatedState.system === 'cubic') {
-        const comp = CrystalAnalysis.checkPlaneDirectionCompatibility(
-            { h: updatedState.h, k: updatedState.k, l: updatedState.l },
-            { u: adv.direction.u, v: adv.direction.v, w: adv.direction.w }
-        );
-
-        // Mechanism Heuristics with Defect Penalty
-        const defectPenalty = DefectEngine.computeDefectPenalty(adv.defect);
-        let planarScore = MechanismEngine.estimatePlanarDensityScore(updatedState.h, updatedState.k, updatedState.l, adv.structure);
-        let linearScore = MechanismEngine.estimateLinearDensityScore(adv.direction.u, adv.direction.v, adv.direction.w, adv.structure);
-        
-        planarScore *= defectPenalty.multiplier;
-        linearScore *= defectPenalty.multiplier;
-
-        const totalScore = MechanismEngine.computeMechanismScore(planarScore, linearScore, comp.liesInPlane);
-        const explanation = MechanismEngine.explainMechanismScore(totalScore, adv.structure, comp.liesInPlane);
-
-        // Schmid Factor Calculation
-        const normalVec = new THREE.Vector3(updatedState.k, updatedState.l, updatedState.h);
-        const slipVec = new THREE.Vector3(adv.direction.v, adv.direction.w, adv.direction.u);
-        const loadVec = new THREE.Vector3(adv.load.ly, adv.load.lz, adv.load.lx);
-        
-        const schmidData = SchmidEngine.computeSchmidFactor(normalVec, slipVec, loadVec);
-        const schmidExp = SchmidEngine.explainSchmidFactor(schmidData ? schmidData.raw : null);
-
-        // Plane Metrics
-        let area = 0, atomCount = 0, rho = 0, rhoExplanation = null;
-        if (points.length >= 3) {
-            area = PlaneMetrics.computePlaneArea(points);
-            atomCount = PlaneMetrics.countPlaneAtoms(points, adv.structure, adv.defect);
-            rho = PlaneMetrics.computePlanarDensity(area, atomCount);
-            rhoExplanation = PlaneMetrics.explainPlanarDensity(rho, adv.structure);
-        } else {
-            rhoExplanation = { rank: '-', color: 'var(--text-muted)', text: 'No hay polígono geométrico visible en la celda unitaria trazada. No es posible ejecutar un análisis volumétrico para este caso.' };
-        }
-
-        // Update Advanced Panel
-        AdvancedPanel.updateAdvancedResults(updatedState, adv.direction, comp, {
-            planar: planarScore,
-            linear: linearScore,
-            total: totalScore,
-            explanation: explanation
-        }, {
-            ...schmidData,
-            explanation: schmidExp
-        }, DefectEngine.getDefectDescription(adv.defect), {
-            area: area === 0 ? '-' : area.toFixed(3),
-            atoms: area === 0 ? '-' : atomCount,
-            density: area === 0 || isNaN(rho) ? '-' : rho.toFixed(3),
-            explanation: rhoExplanation
-        });
-        
-        // Advisor Engine
-        const advisorReport = AdvisorEngine.generateAdvisorReport({
-            structure: adv.structure,
-            planeArea: area,
-            planarRhoRank: rhoExplanation ? rhoExplanation.rank : '-',
-            directionActive: adv.direction.active,
-            directionCompatible: comp.liesInPlane,
-            mechanismScore: totalScore,
-            schmidMultiplier: schmidData ? schmidData.multiplier : null,
-            activeDefect: adv.defect
-        });
-        AdvancedPanel.updateAdvisorResults(advisorReport);
-
-        // Advanced Rendering
-        if (adv.direction.active) {
-            SceneController.renderCrystallographicDirection(adv.direction.u, adv.direction.v, adv.direction.w, updatedState.system);
-        }
-        SceneController.renderLoadDirection(adv.load.lx, adv.load.ly, adv.load.lz);
-        SceneController.renderLattice3D(adv.structure, adv.defect, isAdvOpen);
+    if (document.getElementById('toggle-plane')?.checked) {
+        SceneController.rebuildPlaneLayer(updatedState, points);
     } else {
-        // Hexagonal limited advice
-        AdvancedPanel.updateAdvisorResults({
-             diagnosis: "Sistema hexagonal activo. El motor de análisis avanzado está optimizado para celdas cúbicas (SC/BCC/FCC).",
-             strengths: ["Cálculo de índices Miller-Bravais (hkil) estable."],
-             limitations: ["Análisis de densidad planar no disponible para prismas aún."],
-             recommendations: ["Use la visualización de vector normal para comparar planos basal, prismático y piramidal."]
-        });
+        SceneController.rebuildPlaneLayer(updatedState, []); 
     }
+
+    // 4. CAPAS DE RED Y DEFECTOS
+    const adv = AdvancedPanel.getAdvancedState();
+    const isAdvOpen = document.getElementById('advanced-panel')?.classList.contains('visible');
+    const isAnyTechnicalOpen = AdvancedPanel.isAnyTechnicalMenuOpen();
     
-    // Explicit render requested to support the low-cost idle GPU optimization
+    let activeStructure = updatedState.structure;
+    if (isCalcOpen && calcInputs && updatedState.system === 'cubic') {
+        activeStructure = calcInputs.structure;
+    }
+
+    // Sincronización Global de UI (Mantener sidebar actualizado con calculadora)
+    UIController.updateSidebarInputs(updatedState.indices.h, updatedState.indices.k, updatedState.indices.l);
+
+    // En HCP y Cúbico, mostramos la red si la calculadora está abierta O si el Modo Ingeniería está activo
+    const showAtoms = isCalcOpen || isAdvOpen;
+    
+    SceneController.rebuildReferenceLatticeLayer(activeStructure, showAtoms, updatedState.caRatio);
+    SceneController.rebuildDefectLayer(activeStructure, adv.defect, showAtoms, updatedState.caRatio);
+
+    // 5. CAPA OVERLAY (Vectores adicionales)
+    if (document.getElementById('toggle-vector')?.checked) {
+        // El vector normal ya está en rebuildPlaneLayer, pero si hay otros:
+        if (adv.direction.active) SceneController.renderCrystallographicDirection(adv.direction.u, adv.direction.v, adv.direction.w, updatedState.system);
+        SceneController.renderLoadDirection(adv.load.lx, adv.load.ly, adv.load.lz);
+    }
+
+    // 6. UI Y CÁLCULOS
+    UIController.updateTechnicalPanel(updatedState, points);
+    
+    if (updatedState.system === 'cubic') {
+        performCubicEngineeringAnalysis({ ...updatedState, structure: activeStructure, ...updatedState.indices }, adv, points);
+    } else {
+        // En HCP limpiar o no realizar análisis de ingeniería que choca con cúbico
+        AdvancedPanel.updateAdvancedResults(updatedState, adv.direction, null, null, null, null, null);
+        AdvancedPanel.updateAdvisorResults("Análisis de ingeniería en HCP en fase beta.");
+    }
+
+    if (isCalcOpen && calcInputs) {
+        const calcResults = CrystalCalculator.calculateAllMetrics({
+            ...calcInputs, polygonPoints: points, system: updatedState.system
+        });
+        CalculatorPanel.updateCrystalCalculatorResults(calcResults);
+    }
+
     SceneController.requestRender();
 }
 
 /**
- * Reads UI inputs and performs validation.
+ * Limpia la UI técnica cuando los inputs son inválidos
  */
+function updateTechnicalPanelInvalid() {
+    const el = document.getElementById('val-coords');
+    if (el) el.textContent = '---';
+    const elI = document.getElementById('val-inter');
+    if (elI) elI.textContent = 'Indefinido';
+    const elV = document.getElementById('val-vec');
+    if (elV) elV.textContent = '|V| = 0';
+}
+
+function performCubicEngineeringAnalysis(state, adv, points) {
+    const comp = CrystalAnalysis.checkPlaneDirectionCompatibility(
+        { h: state.h, k: state.k, l: state.l },
+        { u: adv.direction.u, v: adv.direction.v, w: adv.direction.w }
+    );
+    const defectPenalty = DefectEngine.computeDefectPenalty(adv.defect);
+    let pScore = MechanismEngine.estimatePlanarDensityScore(state.h, state.k, state.l, state.structure) * defectPenalty.multiplier;
+    let lScore = MechanismEngine.estimateLinearDensityScore(adv.direction.u, adv.direction.v, adv.direction.w, state.structure) * defectPenalty.multiplier;
+    
+    const tScore = MechanismEngine.computeMechanismScore(pScore, lScore, comp.liesInPlane);
+    const expl = MechanismEngine.explainMechanismScore(tScore, state.structure, comp.liesInPlane);
+
+    const schmidData = SchmidEngine.computeSchmidFactor(
+        new THREE.Vector3(state.k, state.l, state.h),
+        new THREE.Vector3(adv.direction.v, adv.direction.w, adv.direction.u),
+        new THREE.Vector3(adv.load.ly, adv.load.lz, adv.load.lx)
+    );
+
+    let area = points.length >= 3 ? PlaneMetrics.computePlaneArea(points) : 0;
+    let atomCount = PlaneMetrics.countPlaneAtoms(points, state.structure, adv.defect, state.caRatio);
+    let rho = PlaneMetrics.computePlanarDensity(area, atomCount);
+    let rhoExplanation = PlaneMetrics.explainPlanarDensity(rho, state.structure);
+
+    AdvancedPanel.updateAdvancedResults(state, adv.direction, comp, {
+        planar: pScore, linear: lScore, total: tScore, explanation: expl
+    }, schmidData, DefectEngine.getDefectDescription(adv.defect), {
+        area: area.toFixed(3), atoms: atomCount, density: rho.toFixed(3), explanation: rhoExplanation
+    });
+
+    const report = AdvisorEngine.generateAdvisorReport({
+        structure: state.structure, planeArea: area, planarRhoRank: rhoExplanation?.rank || '-',
+        directionActive: adv.direction.active, directionCompatible: comp.liesInPlane,
+        mechanismScore: tScore, schmidMultiplier: schmidData?.multiplier || null, activeDefect: adv.defect
+    });
+    AdvancedPanel.updateAdvisorResults(report);
+
+    if (adv.direction.active) SceneController.renderCrystallographicDirection(adv.direction.u, adv.direction.v, adv.direction.w, state.system);
+    SceneController.renderLoadDirection(adv.load.lx, adv.load.ly, adv.load.lz);
+}
+
 function syncInputs(system) {
+    const isCalcOpen = document.getElementById('calc-panel')?.classList.contains('visible');
+    
+    // Si la calculadora está abierta, priorizamos sus inputs para la escena 3D
+    if (isCalcOpen) {
+        const parseC = (id) => MathUtils.parseIntegerInput(document.getElementById(id)?.value);
+        const h = parseC('calc-h'), k = parseC('calc-k'), l = parseC('calc-l');
+        
+        if (h === null || k === null || l === null) return null;
+        
+        if (system === 'cubic') {
+            if (!MathUtils.validateCubicIndices(h, k, l)) {
+                UIController.showError("Error: (0 0 0) indefinido.");
+                return null;
+            }
+            return { h, k, l, i: 0 };
+        } else {
+            if (h === 0 && k === 0 && l === 0) {
+                UIController.showError("Error: Plano basal indefinido (0 0 0 0).");
+                return null;
+            }
+            return { h, k, l, i: -(h + k) };
+        }
+    }
+
+    // Comportamiento estándar (sidebar)
     const parse = (id) => MathUtils.parseIntegerInput(document.getElementById(id)?.value);
     
     if (system === 'cubic') {
         const h = parse('c-h'), k = parse('c-k'), l = parse('c-l');
-        if (h === null || k === null || l === null) {
-            UIController.showError("Error: Inserte valores enteros válidos.");
-            return null;
-        }
+        if (h === null || k === null || l === null) return null;
         if (!MathUtils.validateCubicIndices(h, k, l)) {
-            UIController.showError("Error: (0 0 0) es indefinido.");
+            UIController.showError("Error: (0 0 0) indefinido.");
             return null;
         }
         return { h, k, l, i: 0 };
     } else {
         const h = parse('h-h'), k = parse('h-k'), l = parse('h-l');
-        if (h === null || k === null || l === null) {
-            UIController.showError("Error: Inserte valores enteros válidos.");
+        if (h === null || k === null || l === null) return null;
+        if (h === 0 && k === 0 && l === 0) {
+            UIController.showError("Error: Plano basal indefinido (0 0 0 0).");
             return null;
         }
-        const i = -(h + k);
-        const hiEl = document.getElementById('h-i');
-        if (hiEl) hiEl.value = i;
-        
-        const hexVal = MathUtils.validateHexIndices(h, k, i, l);
-        if (h === 0 && k === 0 && i === 0 && l === 0) {
-            UIController.showError("Error: (0 0 0 0) es indefinido.");
-            return null;
-        }
-        if (!hexVal.valid) {
-            UIController.showError(`Aviso: i ≠ -(h+k). Esperado ${hexVal.expectedI}.`);
-        }
-        return { h, k, i, l };
+        return { h, k, l, i: -(h + k) };
     }
 }
+
+export function updateSceneGeometryThrottled() {
+    updateSceneGeometry();
+}
+
+window.triggerCalculatorUpdate = updateSceneGeometry;
+window.triggerCalculatorSystemChange = switchCrystalSystemSafely;
+window.syncViewerSystemToCalculatorSafely = () => switchCrystalSystemSafely(getActiveCrystalSystem());
 
 document.addEventListener('DOMContentLoaded', bootstrapApp);

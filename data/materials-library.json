@@ -1,0 +1,98 @@
+[
+  {
+    "id": "fe_bcc",
+    "name": "Iron",
+    "symbol": "Fe",
+    "structure": "BCC",
+    "latticeParameterA": 2.8665,
+    "atomicMass": 55.845,
+    "atomicRadius": null,
+    "spaceGroup": "Im-3m",
+    "notes": "Curated prototype entry",
+    "source": "curated prototype"
+  },
+  {
+    "id": "cu_fcc",
+    "name": "Copper",
+    "symbol": "Cu",
+    "structure": "FCC",
+    "latticeParameterA": 3.6149,
+    "atomicMass": 63.546,
+    "atomicRadius": null,
+    "spaceGroup": "Fm-3m",
+    "notes": "Curated prototype entry",
+    "source": "curated prototype"
+  },
+  {
+    "id": "al_fcc",
+    "name": "Aluminum",
+    "symbol": "Al",
+    "structure": "FCC",
+    "latticeParameterA": 4.0495,
+    "atomicMass": 26.9815385,
+    "atomicRadius": null,
+    "spaceGroup": "Fm-3m",
+    "notes": "Curated prototype entry",
+    "source": "curated prototype"
+  },
+  {
+    "id": "w_bcc",
+    "name": "Tungsten",
+    "symbol": "W",
+    "structure": "BCC",
+    "latticeParameterA": 3.1652,
+    "atomicMass": 183.84,
+    "atomicRadius": null,
+    "spaceGroup": "Im-3m",
+    "notes": "Curated prototype entry",
+    "source": "curated prototype"
+  },
+  {
+    "id": "au_fcc",
+    "name": "Gold",
+    "symbol": "Au",
+    "structure": "FCC",
+    "latticeParameterA": 4.0782,
+    "atomicMass": 196.966569,
+    "atomicRadius": null,
+    "spaceGroup": "Fm-3m",
+    "notes": "Curated prototype entry",
+    "source": "curated prototype"
+  },
+  {
+    "id": "ag_fcc",
+    "name": "Silver",
+    "symbol": "Ag",
+    "structure": "FCC",
+    "latticeParameterA": 4.0853,
+    "atomicMass": 107.8682,
+    "atomicRadius": null,
+    "spaceGroup": "Fm-3m",
+    "notes": "Curated prototype entry",
+    "source": "curated prototype"
+  },
+  {
+    "id": "ni_fcc",
+    "name": "Nickel",
+    "symbol": "Ni",
+    "structure": "FCC",
+    "latticeParameterA": 3.5238,
+    "atomicMass": 58.6934,
+    "atomicRadius": null,
+    "spaceGroup": "Fm-3m",
+    "notes": "FCC structure, interstitial studies relevant",
+    "source": "curated prototype"
+  },
+  {
+    "id": "pd_fcc",
+    "name": "Palladium",
+    "symbol": "Pd",
+    "structure": "FCC",
+    "latticeParameterA": 3.8891,
+    "atomicMass": 106.42,
+    "atomicRadius": null,
+    "spaceGroup": "Fm-3m",
+    "notes": "FCC structure, excellent for hydrogen absorption studies",
+    "source": "curated prototype"
+  }
+]

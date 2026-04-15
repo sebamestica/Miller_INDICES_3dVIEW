@@ -1,0 +1,56 @@
+{
+    "Fe": [
+        { "isotope": "54Fe", "mass": 53.9396, "abundance": 5.845 },
+        { "isotope": "56Fe", "mass": 55.9349, "abundance": 91.754 },
+        { "isotope": "57Fe", "mass": 56.9354, "abundance": 2.119 },
+        { "isotope": "58Fe", "mass": 57.9333, "abundance": 0.282 }
+    ],
+    "Cu": [
+        { "isotope": "63Cu", "mass": 62.9296, "abundance": 69.17 },
+        { "isotope": "65Cu", "mass": 64.9278, "abundance": 30.83 }
+    ],
+    "Al": [
+        { "isotope": "27Al", "mass": 26.9815, "abundance": 100.0 }
+    ],
+    "Mg": [
+        { "isotope": "24Mg", "mass": 23.9850, "abundance": 78.99 },
+        { "isotope": "25Mg", "mass": 24.9858, "abundance": 10.00 },
+        { "isotope": "26Mg", "mass": 25.9826, "abundance": 11.01 }
+    ],
+    "Ni": [
+        { "isotope": "58Ni", "mass": 57.9353, "abundance": 68.077 },
+        { "isotope": "60Ni", "mass": 59.9308, "abundance": 26.223 },
+        { "isotope": "61Ni", "mass": 60.9311, "abundance": 1.140 },
+        { "isotope": "62Ni", "mass": 61.9283, "abundance": 3.634 },
+        { "isotope": "64Ni", "mass": 63.9280, "abundance": 0.926 }
+    ],
+    "Pd": [
+        { "isotope": "102Pd", "mass": 101.9056, "abundance": 1.02 },
+        { "isotope": "104Pd", "mass": 103.9040, "abundance": 11.14 },
+        { "isotope": "105Pd", "mass": 104.9051, "abundance": 22.33 },
+        { "isotope": "106Pd", "mass": 105.9035, "abundance": 27.33 },
+        { "isotope": "108Pd", "mass": 107.9039, "abundance": 26.46 },
+        { "isotope": "110Pd", "mass": 109.9051, "abundance": 11.72 }
+    ],
+    "Au": [
+        { "isotope": "197Au", "mass": 196.9666, "abundance": 100.0 }
+    ],
+    "Ag": [
+        { "isotope": "107Ag", "mass": 106.9051, "abundance": 51.839 },
+        { "isotope": "109Ag", "mass": 108.9048, "abundance": 48.161 }
+    ],
+    "Ti": [
+        { "isotope": "46Ti", "mass": 45.9526, "abundance": 8.25 },
+        { "isotope": "47Ti", "mass": 46.9518, "abundance": 7.44 },
+        { "isotope": "48Ti", "mass": 47.9479, "abundance": 73.72 },
+        { "isotope": "49Ti", "mass": 48.9479, "abundance": 5.41 },
+        { "isotope": "50Ti", "mass": 49.9448, "abundance": 5.18 }
+    ],
+    "W": [
+        { "isotope": "180W", "mass": 179.9467, "abundance": 0.12 },
+        { "isotope": "182W", "mass": 181.9482, "abundance": 26.50 },
+        { "isotope": "183W", "mass": 182.9502, "abundance": 14.31 },
+        { "isotope": "184W", "mass": 183.9509, "abundance": 30.64 },
+        { "isotope": "186W", "mass": 185.9543, "abundance": 28.43 }
+    ]
+}

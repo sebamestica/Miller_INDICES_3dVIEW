@@ -1,66 +1,58 @@
-/**
- * Miller Explorer - Mechanism Engine
- * Provides qualitative, heuristic interpretation of slip systems and favorability.
- */
 
-/**
- * Estimates a qualitative planar density score.
- * Lower indices (lower h^2+k^2+l^2) generally mean higher d-spacing and compactness.
- */
+
+
 export function estimatePlanarDensityScore(h, k, l, structure) {
     const sumSq = h*h + k*k + l*l;
     if (sumSq === 0) return 0;
 
-    // Heuristic base: 1/sumSq
+
     let score = 10 / sumSq;
 
-    // Adjustments by structure
+
     if (structure === 'fcc') {
-        if (sumSq === 3) score *= 1.5; // {111} is top
+        if (sumSq === 3) score *= 1.5;
     } else if (structure === 'bcc') {
-        if (sumSq === 2) score *= 1.5; // {110} is top
+        if (sumSq === 2) score *= 1.5;
+    } else if (structure === 'hcp') {
+        if (sumSq === 1) score *= 1.8; // Plano basal HCP (0001) es altamente compacto
     } else if (structure === 'sc') {
-        if (sumSq === 1) score *= 1.5; // {100} is top
+        if (sumSq === 1) score *= 1.5;
     }
 
     return Math.min(score, 10);
 }
 
-/**
- * Estimates a qualitative linear density score for direction [u v w].
- */
+
 export function estimateLinearDensityScore(u, v, w, structure) {
     const sumSq = u*u + v*v + w*w;
     if (sumSq === 0) return 0;
 
     let score = 10 / sumSq;
 
-    // Adjustments
+
     if (structure === 'fcc') {
-        if (sumSq === 2) score *= 1.4; // <110> is most compact
+        if (sumSq === 2) score *= 1.4;
     } else if (structure === 'bcc') {
-        if (sumSq === 3) score *= 1.4; // <111> is most compact
+        if (sumSq === 3) score *= 1.4;
+    } else if (structure === 'hcp') {
+        if (sumSq === 1) score *= 1.6; // Dirección <11-20>
     }
 
     return Math.min(score, 10);
 }
 
-/**
- * Computes a combined mechanism favorability score.
- */
+
 export function computeMechanismScore(planarScore, linearScore, isCompatible) {
     if (!isCompatible) return 0;
     
-    // Average + bonus for both being high
+
     let base = (planarScore + linearScore) / 2;
     if (planarScore > 7 && linearScore > 7) base += 2;
     
     return Math.min(base, 10);
 }
 
-/**
- * Returns a qualitative classification and explanation.
- */
+
 export function explainMechanismScore(score, structure, isCompatible) {
     if (!isCompatible) {
         return {

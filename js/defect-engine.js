@@ -1,7 +1,4 @@
-/**
- * Miller Explorer - Defect Engine
- * Conceptual representation of point defects and their impact.
- */
+
 
 export const DEFECT_TYPES = {
     NONE: 'none',
@@ -10,9 +7,7 @@ export const DEFECT_TYPES = {
     SUBSTITUTIONAL: 'substitutional'
 };
 
-/**
- * Calculates a qualitative penalty or adjustment to the mechanism favorability.
- */
+
 export function computeDefectPenalty(type) {
     switch (type) {
         case DEFECT_TYPES.VACANCY:
@@ -26,9 +21,7 @@ export function computeDefectPenalty(type) {
     }
 }
 
-/**
- * Returns technical info for the UI.
- */
+
 export function getDefectDescription(type) {
     const data = computeDefectPenalty(type);
     return data.text;

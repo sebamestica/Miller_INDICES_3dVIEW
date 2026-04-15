@@ -1,10 +1,11 @@
-/**
- * Miller Explorer - Plane Metrics
- * Computes exact areas, intercepts and densities for planes.
- */
+
 import * as THREE from 'three';
 import { getLatticeAtoms, mapToThree } from './lattice-renderer.js';
+import { CONFIG } from './state.js';
 
+/**
+ * Calcula el área geométrica de un polígono 3D arbitrario
+ */
 export function computePlaneArea(polygonPoints) {
     if (!polygonPoints || polygonPoints.length < 3) return 0;
     
@@ -21,50 +22,90 @@ export function computePlaneArea(polygonPoints) {
     return area; 
 }
 
-export function countPlaneAtoms(polygonPoints, structure, defectType) {
+/**
+ * Cuenta la contribución de átomos que intersectan el plano (n_eff)
+ * Regla cúbica: 
+ * - Átomo en esquina del cuadrado unitario: 1/4
+ * - Átomo en borde del cuadrado unitario: 1/2
+ * - Átomo interno: 1.0
+ */
+export function countPlaneAtoms(polygonPoints, structure, defectType = null, caRatio = null) {
     if (!polygonPoints || polygonPoints.length < 3) return 0;
     
-    const atoms = getLatticeAtoms(structure);
-    
-    let validAtoms = [...atoms];
-    if (defectType === 'vacancy') {
-        validAtoms = validAtoms.filter(pos => pos.join(',') !== '1,1,1');
-    }
-    if (defectType === 'interstitial') {
-        let ipos = [0.5, 0.5, 0.5];
-        if (structure === 'bcc') ipos = [0.5, 0.5, 0];
-        if (structure === 'fcc') ipos = [0.5, 0.5, 0.5];
-        validAtoms.push(ipos);
-    }
-    
+    const eps = 0.05; // Tolerancia para coplanaridad
     const plane = new THREE.Plane().setFromCoplanarPoints(polygonPoints[0], polygonPoints[1], polygonPoints[2]);
+    let totalContribution = 0;
+
+    // Solo soporta cúbico
+    const atoms = getLatticeAtoms(structure.toLowerCase());
+    atoms.forEach(pos => {
+        const pThree = mapToThree(...pos).multiplyScalar(CONFIG.scale);
+        const dist = plane.distanceToPoint(pThree);
+        
+        if (Math.abs(dist) < eps) {
+            // El átomo está en el plano. Ahora determinamos su contribución dentro de la CELDA
+            // Verificamos cuántos límites de la celda unitaria [0,1] toca el punto indexado
+                let boundaryCount = 0;
+                for (let i = 0; i < 3; i++) {
+                    if (Math.abs(pos[i]) < 0.001 || Math.abs(pos[i] - 1) < 0.001) {
+                        boundaryCount++;
+                    }
+                }
+
+                if (boundaryCount === 3) {
+                    // Esquina de la celda: En un plano genérico, aporta 1/4 al área seccional
+                    totalContribution += 0.25;
+                } else if (boundaryCount === 2) {
+                    // Borde de la celda: Aporta 1/2
+                    totalContribution += 0.5;
+                } else {
+                    // Cara de la celda o interior: Aporta 1.0
+                    totalContribution += 1.0;
+                }
+            }
+        });
     
-    let count = 0;
-    const eps = 1e-4;
-    
-    validAtoms.forEach(pos => {
-        const pThree = mapToThree(...pos);
-        if (Math.abs(plane.distanceToPoint(pThree)) < eps) {
-            count++;
-        }
-    });
-    
-    return count;
+    return totalContribution;
 }
 
+/**
+ * Densidad Planar (at/Å²)
+ */
 export function computePlanarDensity(area, atomCount) {
-    if (area < 1e-6) return 0;
+    if (!area || area <= 0 || !atomCount || atomCount <= 0) return 0;
     return atomCount / area;
 }
 
+/**
+ * Genera una explicación técnica y un ranking para la densidad planar
+ */
 export function explainPlanarDensity(rho, structureName = "red") {
-    if (rho === 0 || isNaN(rho)) return { rank: '-', color: 'var(--text-muted)', text: 'Plano truncado o sin átomos encontrados que intersecten volumétricamente. La densidad no es evaluable.' };
+    if (rho === 0 || isNaN(rho)) return { 
+        rank: '-', 
+        color: 'var(--text-muted)', 
+        text: 'Sin átomos detectados en este plano de corte.' 
+    };
     
-    // Base explanation emphasizing separation of Area and SC/BCC/FCC
-    let baseText = `Nota técnica: Mientras que el área geométrica depende únicamente del corte transversal, la estructura física activa [${structureName.toUpperCase()}] establece qué coordenadas atómicas reales intersecan este último, alterando drásticamente el flujo de densidad final.`;
+    // Basado en densidades típicas (Ej. Al FCC (111) rho ~ 0.14 at/A2)
+    // Usaremos un ranking heurístico para feedback visual
+    const s = structureName.toUpperCase();
+    let rank = 'BAJA';
+    let color = 'var(--danger)';
+    
+    if (rho >= 0.12) {
+        rank = 'MÁXIMA';
+        color = '#d946ef'; // Magenta brillante para planos compactos
+    } else if (rho >= 0.08) {
+        rank = 'ALTA';
+        color = 'var(--success)';
+    } else if (rho >= 0.04) {
+        rank = 'MEDIA';
+        color = 'var(--accent-color)';
+    }
 
-    if (rho >= 2.0) return { rank: 'ALTA', color: 'var(--success)', text: `Alta aglomeración. Fundamental en sistemas de deslizamiento prioritarios.\n\n${baseText}` };
-    if (rho >= 1.0) return { rank: 'MEDIA', color: 'var(--accent-color)', text: `Densidad modal de empaquetaje. Actividad deslizante secundaria requerida.\n\n${baseText}` };
-    
-    return { rank: 'BAJA', color: 'var(--danger)', text: `Plano expansivo subdenso. Deslizamientos improbables sin el apoyo de dislocaciones o variables de temperatura atípicas.\n\n${baseText}` };
+    return { 
+        rank, 
+        color, 
+        text: `Estructura: ${s}. Densidad medida: ${rho.toFixed(4)} at/Å². Este valor indica la eficiencia del empaquetamiento atómico en la orientación seleccionada.`
+    };
 }
