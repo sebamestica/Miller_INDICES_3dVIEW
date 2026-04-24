@@ -1,0 +1,83 @@
+/* 
+   MILLER EXPLORER - PREMIUM EFFECTS MODULE (v1.0)
+   Este archivo añade capas estéticas sin afectar la estructura base. 
+   Borrar para revertir a UIX básica.
+*/
+
+/* 1. Botones con Efecto de Profundidad */
+.primary-btn {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    filter: brightness(1.1);
+}
+
+.primary-btn:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* 2. Chips de Presets con Glow */
+.preset-chip {
+    transition: all 0.2s ease;
+}
+
+.preset-chip:hover {
+    background: #000;
+    color: #fff;
+    transform: scale(1.05);
+    border-color: #000;
+}
+
+/* 3. Tarjetas de Análisis con Elevación */
+.analysis-card, .mech-metric-box, .calc-metric-box {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.analysis-card:hover, .mech-metric-box:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+}
+
+/* 4. Efectos de Foco en Inputs */
+.coord-input, .mech-input, .calc-input {
+    transition: all 0.2s ease;
+}
+
+.coord-input:focus {
+    transform: scale(1.02);
+}
+
+/* 5. Micro-interacciones de Iconos */
+.close-btn {
+    transition: all 0.2s ease;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-btn:hover {
+    background: #f1f3f5;
+    transform: rotate(90deg);
+    color: #fa5252;
+}
+
+/* 6. Tabs dinámicos */
+.tab-btn:hover:not(.active) {
+    background: rgba(0,0,0,0.03);
+    color: #000;
+}
+
+/* 7. Glassmorphism sutil para el Asesor */
+.mech-advisor {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}

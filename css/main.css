@@ -412,10 +412,10 @@ input:checked + .slider:before {
 }
 
 /* Crystallographic Calculator Panel Drawer */
-#calc-panel {
+/* Technical Panels Drawers (Calc & Mech) */
+#calc-panel, #mech-panel {
     position: fixed;
     top: 0;
-    left: -450px;
     width: 450px;
     height: 100vh;
     background: #fff;
@@ -427,7 +427,10 @@ input:checked + .slider:before {
     padding: 0;
     border-right: 1px solid var(--border-color);
 }
-#calc-panel.visible { left: 0; }
+#calc-panel { left: -450px; }
+#mech-panel { left: -450px; }
+
+#calc-panel.visible, #mech-panel.visible { left: 0; }
 
 .calc-header {
     padding: 30px;
@@ -505,26 +508,82 @@ input:checked + .slider:before {
     font-size: 0.8rem;
 }
 
-.calc-footer { padding: 25px; background: #fdfdfd; border-top: 1px solid var(--border-color); }
-.calc-footer p { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; text-align: center; }
+.adv-footer, .calc-footer, .mech-footer { padding: 20px 30px; background: #fbfbfb; border-top: 1px solid var(--border-color); }
+.adv-footer p, .calc-footer p, .mech-footer p { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; text-align: center; }
+
+/* Mechanical Panel Specifics */
+.mech-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 25px 30px;
+    border-bottom: 2px solid #2b6cb0;
+    background: #fdfdfd;
+}
+.mech-header h2 { color: #2b6cb0; }
+
+#mech-sections { flex: 1; overflow-y: auto; padding: 20px 30px; }
+
+.mech-section { margin-bottom: 24px; background: #fff; }
+.mech-section-title {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 15px;
+    border-bottom: 1px dashed var(--border-color);
+    padding-bottom: 8px;
+}
+
+.mech-field { margin-bottom: 16px; }
+.mech-label { display: block; font-size: 0.75rem; font-weight: 700; color: #4a5568; margin-bottom: 6px; }
+.mech-input, .mech-select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+.mech-input:focus { border-color: #2b6cb0; }
+
+.mech-metric-box {
+    background: #f0f7ff;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #cce3ff;
+}
+
+.mech-chart-container {
+    width: 100%;
+    height: 180px;
+    background: #fdfdfd;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+}
 
 @media (max-width: 1000px) {
-    #calc-panel {
+    #advanced-panel, #calc-panel, #mech-panel {
         position: fixed;
-        top: 0;
-        left: -100%;
+        left: 0;
+        right: 0;
         width: 100%;
-        transition: left 0.3s;
-        border-right: none;
+        height: 70vh;
+        top: auto;
+        bottom: 0;
+        transform: translateY(100%);
+        border-radius: 24px 24px 0 0;
+        border: none;
+        border-top: 1px solid var(--border-color);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 2000;
+        display: flex !important; /* Asegurar que el flex se aplique al ser visible */
     }
-    #calc-panel.visible { left: 0; }
-    
-    .calc-metric-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
+    #advanced-panel.visible, #calc-panel.visible, #mech-panel.visible {
+        transform: translateY(0);
     }
-    .calc-metric-item strong { margin-top: 2px; }
 }
 
 /* Toggles */

@@ -68,7 +68,25 @@ const INITIAL_STATE = {
     
     // UI Flags
     isEngineeringModeEnabled: false,
-    isCalculatorOpen: false
+    isCalculatorOpen: false,
+    isMechanicalOpen: false,
+
+    // Módulo Mecánico
+    mechanical: {
+        loadType: 'uniaxial', // uniaxial, biaxial, triaxial
+        stress: { x: 0, y: 0, z: 0 }, // MPa
+        material: {
+            id: 'custom',
+            name: 'Manual / Personalizado',
+            young: 200, // GPa
+            poisson: 0.30
+        },
+        results: {
+            strain: { x: 0, y: 0, z: 0 },
+            volumeChange: 0,
+            rss: 0
+        }
+    }
 };
 
 let state = { ...INITIAL_STATE };

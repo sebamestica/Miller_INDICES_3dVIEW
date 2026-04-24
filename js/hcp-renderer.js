@@ -7,7 +7,7 @@ export function drawHcpPrism(group, a, c) {
     
     // Draw edges
     const material = new THREE.LineBasicMaterial({ 
-        color: 0x9e9e9e, linewidth: 2, transparent: true, opacity: 0.6 
+        color: 0x000000, linewidth: 2, transparent: false, opacity: 1 
     });
     
     // bottom, top, sides

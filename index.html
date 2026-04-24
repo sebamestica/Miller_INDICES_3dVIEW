@@ -22,6 +22,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Styles -->
     <link rel="stylesheet" href="./css/main.css">
+    <link rel="stylesheet" href="./css/advisor.css">
+    <link rel="stylesheet" href="./css/effects.css">
 </head>
 <body>
     <div id="app">
@@ -132,6 +134,7 @@
 
             <div style="margin-top: auto; padding-top: 20px; display: flex; flex-direction: column; gap: 10px;">
                 <button id="btn-open-calc" class="primary-btn" style="background: #008080; color: #fff; padding: 14px;">Calculadora Cristalográfica</button>
+                <button id="btn-open-mech" class="primary-btn" style="background: #2b6cb0; color: #fff; padding: 14px;">Calculadora Mecánica</button>
                 <button id="btn-reset" class="primary-btn" style="background: #f1f3f5; color: #495057; padding: 12px;">Restablecer Cámara</button>
             </div>
 
@@ -178,6 +181,30 @@
                 <p>Módulo de Análisis Geométrico y Material</p>
             </div>
         </aside>
+
+        <!-- Panel de Mecánica -->
+        <aside id="mech-panel">
+            <div class="mech-header">
+                <h2>Simulación Mecánica</h2>
+                <button id="btn-close-mech" class="close-btn">&times;</button>
+            </div>
+            <div id="mech-sections">
+                <!-- Dinámicamente poblado por mechanical-panel.js -->
+            </div>
+            <div class="mech-footer">
+                <p>Análisis de Deformación Elástica Isotrópica</p>
+            </div>
+        </aside>
+
+        <!-- Advisor Flotante (Desktop) / Integrado (Mobile) -->
+        <div id="mech-advisor-container" class="mech-advisor" style="display: none;">
+            <div class="mech-advisor-title">
+                <span>Asesor Técnico</span>
+            </div>
+            <div id="mech-advisor-content" class="mech-advisor-content">
+                Realiza una simulación para recibir consejos técnicos.
+            </div>
+        </div>
     </div>
 
     <!-- Three.js Engine -->

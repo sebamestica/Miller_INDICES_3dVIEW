@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Professional 3D Miller Indices Viewer with Mobile-First UX.",
   "scripts": {
-    "start": "serve ."
+    "start": "serve .",
+    "dev": "vite"
   },
   "dependencies": {},
   "private": true

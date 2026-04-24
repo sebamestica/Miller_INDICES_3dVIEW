@@ -108,10 +108,16 @@ export function openCalculatorPanel() {
         isPanelOpen = true;
         hydrateCalculatorFromGlobalState();
         
+        // Sincronización de Modos (Exclusividad)
         document.getElementById('advanced-panel')?.classList.remove('visible');
+        document.body.classList.remove('eng-mode-active');
         const engToggle = document.getElementById('eng-toggle');
         if (engToggle) engToggle.checked = false;
-        document.body.classList.remove('eng-mode-active');
+
+        document.getElementById('mech-panel')?.classList.remove('visible');
+        document.body.classList.remove('mech-mode-active');
+        
+        document.body.classList.add('calc-mode-active');
     }
 }
 
@@ -120,6 +126,7 @@ export function closeCalculatorPanel() {
     if (panel) {
         panel.classList.remove('visible');
         isPanelOpen = false;
+        document.body.classList.remove('calc-mode-active');
     }
 }
 

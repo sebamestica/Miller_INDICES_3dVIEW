@@ -27,6 +27,21 @@ function bootstrapApp() {
     DemoMode.initializeDemoMode(updateSceneGeometry, UIController.switchSystemUI);
     CalculatorPanel.initializeCalculatorPanel();
     
+    // Importación dinámica del panel mecánico
+    import('./mechanical-panel.js').then(MechanicalPanel => {
+        MechanicalPanel.initializeMechanicalPanel(updateSceneGeometry);
+        
+        // Vincular apertura
+        document.getElementById('btn-open-mech')?.addEventListener('click', () => {
+            MechanicalPanel.openMechanicalPanel();
+        });
+        
+        // Vincular cierre
+        document.getElementById('btn-close-mech')?.addEventListener('click', () => {
+            MechanicalPanel.closeMechanicalPanel();
+        });
+    });
+    
     document.getElementById('btn-apply')?.addEventListener('click', updateSceneGeometry);
     document.getElementById('btn-reset')?.addEventListener('click', () => SceneController.resetCameraView(true));
     

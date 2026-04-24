@@ -10,18 +10,122 @@ import * as HCP_MATH from './hcp-math.js';
 
 let scene, camera, renderer, labelRenderer, controls;
 
-// Capas del motor gráfico para segregación lógica (PARTE A)
-const baseCellGroup = new THREE.Group();    // Celda unitaria (cubo/prisma)
-const axisGroup = new THREE.Group();        // Ejes y etiquetas
-const planeGroup = new THREE.Group();       // Planos y normales
-const latticeGroup = new THREE.Group();     // Red atómica de referencia (SC, BCC, FCC, HCP)
-const defectGroup = new THREE.Group();      // Defectos de red
-const overlayObjects = new THREE.Group();   // Otros elementos (flechas de carga)
+const baseCellGroup = new THREE.Group();
+const planeGroup = new THREE.Group();
+const latticeGroup = new THREE.Group();
+const defectGroup = new THREE.Group();
+const crystalGroup = new THREE.Group();     // Agrupador para deformación física
+const axisGroup = new THREE.Group();
+const overlayObjects = new THREE.Group();
 
 let needsRender = true;
 
 export function requestRender() {
     needsRender = true;
+}
+
+/**
+ * APLICA DEFORMACIÓN VISUAL AL CRISTAL (Axial + Cizalle)
+ * Utiliza escalado inteligente para evitar rupturas del renderizado ante valores extremos.
+ */
+export function applyVisualDeformation(ex, ey, ez, gxy = 0) {
+    const visualFactor = 25; 
+    const shearFactor = 15; 
+    
+    // Función de compresión suave (Smart Scaling)
+    // Evita que los átomos se alejen infinitamente de la vista
+    const smartScale = (val, factor) => {
+        const threshold = 0.6; // Límite de desplazamiento visual relativo al cubo
+        const raw = val * factor;
+        // Si el valor es muy grande, usamos una función asintótica (Math.tanh)
+        if (Math.abs(raw) > threshold) {
+            return Math.sign(raw) * (threshold + (Math.tanh(Math.abs(raw) - threshold) * 0.2));
+        }
+        return raw;
+    };
+
+    // Aplicar escalado seguro
+    const sx = 1 + smartScale(ex, visualFactor);
+    const sy = 1 + smartScale(ey, visualFactor);
+    const sz = 1 + smartScale(ez, visualFactor);
+    const sxy = smartScale(gxy, shearFactor);
+
+    crystalGroup.matrix.identity();
+    
+    // Matriz 4x4 (Shear en XY: el eje X se inclina hacia Y)
+    crystalGroup.matrix.set(
+        sx,  sxy, 0,   0,
+        0,   sy,  0,   0,
+        0,   0,   sz,  0,
+        0,   0,   0,   1
+    );
+    
+    crystalGroup.matrixAutoUpdate = false; 
+    requestRender();
+}
+
+/**
+ * ACTUALIZA LAS FLECHAS DE CARA (TENSORES DE ESFUERZO)
+ * @param {Object} stress {xx, yy, zz, xy, yz, zx} en MPa
+ */
+export function updateMechanicalArrows(stress) {
+    const s = CONFIG.scale;
+    
+    // Limpiar flechas anteriores
+    while(overlayObjects.children.length > 0) {
+        disposeObject(overlayObjects.children[0]);
+        overlayObjects.remove(overlayObjects.children[0]);
+    }
+
+    if (!stress) return;
+    
+    // Mapeo de nombres (compatibilidad con objeto antiguo)
+    const sigX = stress.xx !== undefined ? stress.xx : (stress.x || 0);
+    const sigY = stress.yy !== undefined ? stress.yy : (stress.y || 0);
+    const sigZ = stress.zz !== undefined ? stress.zz : (stress.z || 0);
+    const tauXY = stress.xy || 0;
+
+    const createArrow = (dir, origin, magnitude, isShear = false) => {
+        if (Math.abs(magnitude) < 1) return;
+        
+        let color = magnitude > 0 ? 0xff4444 : 0x4444ff; // Normal: Rojo (+), Azul (-)
+        if (isShear) color = 0xddaa00; // Shear: Dorado/Naranja
+        
+        const length = Math.min(Math.abs(magnitude) / 100 * s, s * 1.5); 
+        
+        // Direccionamiento
+        const arrowDir = magnitude > 0 ? dir.clone() : dir.clone().negate();
+        const arrowOrigin = magnitude > 0 ? origin.clone() : origin.clone().add(dir.clone().multiplyScalar(length));
+
+        const arrow = new THREE.ArrowHelper(arrowDir, arrowOrigin, length, color, 0.35 * s, 0.18 * s);
+        overlayObjects.add(arrow);
+    };
+
+    // --- ESFUERZOS NORMALES (Perpendiculares a las caras) ---
+    // Eje X
+    createArrow(new THREE.Vector3(1, 0, 0), new THREE.Vector3(s, s/2, s/2), sigX);
+    createArrow(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(0, s/2, s/2), sigX);
+
+    // Eje Y
+    createArrow(new THREE.Vector3(0, 1, 0), new THREE.Vector3(s/2, s, s/2), sigY);
+    createArrow(new THREE.Vector3(0, -1, 0), new THREE.Vector3(s/2, 0, s/2), sigY);
+
+    // Eje Z
+    createArrow(new THREE.Vector3(0, 0, 1), new THREE.Vector3(s/2, s/2, s), sigZ);
+    createArrow(new THREE.Vector3(0, 0, -1), new THREE.Vector3(s/2, s/2, 0), sigZ);
+
+    // --- ESFUERZOS DE CIZALLE (Paralelos a las caras) ---
+    if (Math.abs(tauXY) > 1) {
+        // τxy: Fuerza en cara X actuando en dirección Y
+        createArrow(new THREE.Vector3(0, 1, 0), new THREE.Vector3(s, 0, s/2), tauXY, true);
+        createArrow(new THREE.Vector3(0, -1, 0), new THREE.Vector3(0, s, s/2), tauXY, true);
+        
+        // τyx (complementario): Fuerza en cara Y actuando en dirección X
+        createArrow(new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, s, s/2), tauXY, true);
+        createArrow(new THREE.Vector3(-1, 0, 0), new THREE.Vector3(s, 0, s/2), tauXY, true);
+    }
+
+    requestRender();
 }
 
 export function initializeScene() {
@@ -68,11 +172,13 @@ export function initializeScene() {
     scene.add(ambient, hemiLight, mainLight);
     
     // Jerarquía de capas
-    scene.add(baseCellGroup);
+    crystalGroup.add(baseCellGroup);
+    crystalGroup.add(planeGroup);
+    crystalGroup.add(latticeGroup);
+    crystalGroup.add(defectGroup);
+
+    scene.add(crystalGroup);
     scene.add(axisGroup);
-    scene.add(planeGroup);
-    scene.add(latticeGroup);
-    scene.add(defectGroup);
     scene.add(overlayObjects);
 
     window.addEventListener('resize', onResize);
@@ -162,6 +268,7 @@ export function resetCameraView(force = true) {
  */
 export function rebuildSystemBaseGeometry(system, caRatio = 1.633) {
     const s = CONFIG.scale;
+    console.log(`[Scene] Reconstruyendo geometría base: ${system}, scale=${s}`);
 
     // Limpieza de la capa base
     while(baseCellGroup.children.length > 0) {
@@ -169,7 +276,7 @@ export function rebuildSystemBaseGeometry(system, caRatio = 1.633) {
         baseCellGroup.remove(baseCellGroup.children[0]);
     }
 
-    const grid = new THREE.GridHelper(s * 8, 20, 0xdddddd, 0xeeeeee);
+    const grid = new THREE.GridHelper(s * 8, 20, 0xcccccc, 0xeeeeee);
     baseCellGroup.add(grid);
 
     if (system === 'hcp') {
@@ -178,7 +285,7 @@ export function rebuildSystemBaseGeometry(system, caRatio = 1.633) {
         const box = new THREE.BoxGeometry(s, s, s);
         const edges = new THREE.EdgesGeometry(box);
         const cell = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ 
-            color: 0x666666, linewidth: 2, transparent: true, opacity: 0.6 
+            color: 0x000000, linewidth: 2, transparent: false, opacity: 1 
         }));
         cell.position.set(s/2, s/2, s/2);
         baseCellGroup.add(cell);

@@ -1,0 +1,83 @@
+/* ADVISOR COMPONENT STYLES (Optimized v1.2) */
+
+.mech-advisor {
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 15px 35px -5px rgba(0,0,0,0.1);
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--text-secondary);
+}
+
+.mech-advisor-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    margin-bottom: 12px;
+    color: var(--text-main);
+    letter-spacing: 0.05em;
+}
+
+.mech-advisor-title::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    background: var(--accent-color);
+    border-radius: 50%;
+}
+
+.mech-advisor-content {
+    animation: advisorFadeIn 0.5s ease;
+}
+
+/* Status variants con acentos sutiles */
+.mech-advisor.status-info { border-left: 5px solid #3182ce; }
+.mech-advisor.status-warning { border-left: 5px solid #dd6b20; background: #fffaf0; }
+.mech-advisor.status-danger { border-left: 5px solid #e53e3e; background: #fff5f5; }
+
+@keyframes advisorFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Desktop: Floating on the right */
+@media (min-width: 1001px) {
+    .mech-advisor {
+        position: fixed;
+        right: 40px;
+        top: 40px;
+        width: 340px;
+        z-index: 1000;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-20px);
+    }
+    
+    body.mech-mode-active .mech-advisor {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+}
+
+/* Mobile: Integrated bottom spacing */
+@media (max-width: 1000px) {
+    .mech-advisor {
+        margin: 16px 0;
+        box-shadow: none;
+        border: 1px solid #edf2f7;
+        background: #f7fafc;
+        border-radius: 12px;
+    }
+    
+    .mech-advisor-title {
+        color: #718096;
+    }
+}

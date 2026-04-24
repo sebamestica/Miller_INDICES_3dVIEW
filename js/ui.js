@@ -1,4 +1,3 @@
-
 import { getState, updateState, getActiveCrystalSystem } from './state.js';
 import { parseIntegerInput } from './math.js';
 import { resetCameraView } from './scene.js';
@@ -71,12 +70,15 @@ export function bindUIEvents(updateScene, updateSceneThrottled) {
         cliInput.onkeypress = (e) => { if(e.key === 'Enter') handleCLI(); };
     }
 
+
     const engToggle = document.getElementById('eng-toggle');
     if (engToggle) {
         engToggle.onchange = (e) => {
             if (e.target.checked) {
                 const calcPanel = document.getElementById('calc-panel');
                 if (calcPanel) calcPanel.classList.remove('visible');
+                const mechPanel = document.getElementById('mech-panel');
+                if (mechPanel) mechPanel.classList.remove('visible');
             }
             AdvancedPanel.setEngineeringModeEnabled(e.target.checked);
             updateScene();
@@ -98,7 +100,7 @@ export function sanitizeIntegerInput(el) {
  * CAMBIO Visual del sistema - No dispara lógica pesada (la lógica está en app.js)
  */
 export function switchSystemUI(sys) {
-    if (sys !== 'cubic' && sys !== 'hcp') return;
+    const isCubic = (sys === 'cubic');
     
     // 1. UI Tabs
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.system === sys));
@@ -106,11 +108,18 @@ export function switchSystemUI(sys) {
     // 2. Visibilidad de Contenedores de Input
     const cubicInputs = document.getElementById('inputs-cubic');
     const hcpInputs = document.getElementById('inputs-hcp');
-    if (cubicInputs) cubicInputs.style.display = (sys === 'cubic') ? 'grid' : 'none';
-    if (hcpInputs) hcpInputs.style.display = (sys === 'hcp') ? 'grid' : 'none';
-    
+    if (cubicInputs) cubicInputs.style.display = isCubic ? 'grid' : 'none';
+    if (hcpInputs) hcpInputs.style.display = isCubic ? 'none' : 'grid';
+
     // 3. Textos y etiquetas principales
-    if (sys === 'cubic') {
+    const btnMech = document.getElementById('btn-open-mech');
+    if (btnMech) {
+        btnMech.style.opacity = isCubic ? '1' : '0.4';
+        btnMech.style.cursor = isCubic ? 'pointer' : 'not-allowed';
+        btnMech.title = isCubic ? '' : 'La simulación mecánica automática no está disponible para HCP.';
+    }
+
+    if (isCubic) {
         document.getElementById('system-subtitle').textContent = 'Laboratorio Cristalográfico Cúbico';
         document.getElementById('input-title').textContent = 'Índices (h k l)';
         document.getElementById('val-sys').textContent = 'Cúbico';
