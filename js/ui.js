@@ -33,7 +33,12 @@ export function bindUIEvents(updateScene, updateSceneThrottled) {
             }
             updateSceneThrottled();
         };
-        input.onkeydown = (e) => e.stopPropagation();
+        input.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('btn-apply').click();
+            }
+            e.stopPropagation();
+        };
         input.onkeyup = (e) => e.stopPropagation();
     });
 

@@ -82,8 +82,11 @@ function renderMechanicalContent() {
                     <input type="number" id="mech-poisson" value="0.30" step="0.01" class="mech-input">
                 </div>
                 <div class="mech-field">
-                    <label class="mech-label">Límite σy (MPa)</label>
-                    <input type="number" id="mech-yield" value="250" step="10" class="mech-input">
+                    <label class="mech-label">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px; color: #e53e3e;"><path d="M12 2v20M2 12h20"/><path d="m17 7-5-5-5 5"/><path d="m17 17-5 5-5-5"/></svg>
+                        Límite σy (MPa)
+                    </label>
+                    <input type="number" id="mech-yield" value="250" step="0.0001" class="mech-input">
                 </div>
             </div>
             <div id="mech-material-info" style="margin-top: 10px; font-size: 0.75rem; color: #718096; background: #f7fafc; padding: 8px; border-radius: 4px; border-left: 3px solid #cbd5e0;">
@@ -106,29 +109,29 @@ function renderMechanicalContent() {
             <div class="input-grid grid-3">
                 <div class="mech-field">
                     <label class="mech-label">σxx (MPa)</label>
-                    <input type="number" id="mech-stress-xx" value="100" class="mech-input">
+                    <input type="number" id="mech-stress-xx" value="100" step="any" class="mech-input">
                 </div>
                 <div class="mech-field">
                     <label class="mech-label">σyy (MPa)</label>
-                    <input type="number" id="mech-stress-yy" value="0" class="mech-input" disabled>
+                    <input type="number" id="mech-stress-yy" value="0" step="any" class="mech-input" disabled>
                 </div>
                 <div class="mech-field">
                     <label class="mech-label">σzz (MPa)</label>
-                    <input type="number" id="mech-stress-zz" value="0" class="mech-input" disabled>
+                    <input type="number" id="mech-stress-zz" value="0" step="any" class="mech-input" disabled>
                 </div>
             </div>
             <div class="input-grid grid-3" id="mech-shear-inputs" style="display: none; margin-top: 10px;">
                 <div class="mech-field">
                     <label class="mech-label">τxy (MPa)</label>
-                    <input type="number" id="mech-stress-xy" value="0" class="mech-input">
+                    <input type="number" id="mech-stress-xy" value="0" step="any" class="mech-input">
                 </div>
                 <div class="mech-field">
                     <label class="mech-label">τyz (MPa)</label>
-                    <input type="number" id="mech-stress-yz" value="0" class="mech-input">
+                    <input type="number" id="mech-stress-yz" value="0" step="any" class="mech-input">
                 </div>
                 <div class="mech-field">
                     <label class="mech-label">τzx (MPa)</label>
-                    <input type="number" id="mech-stress-zx" value="0" class="mech-input">
+                    <input type="number" id="mech-stress-zx" value="0" step="any" class="mech-input">
                 </div>
             </div>
         </div>
@@ -235,6 +238,17 @@ function bindMechanicalEvents() {
         document.getElementById(id)?.addEventListener('input', updateMaterialDerivedInfo);
     });
 
+    // Soporte de Teclado Completo: Enter para calcular en cualquier input
+    const mechInputs = document.querySelectorAll('#mech-panel input');
+    mechInputs.forEach(input => {
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                runMechanicalPipeline();
+            }
+            e.stopPropagation(); // Evitar que otros atajos globales interfieran
+        });
+    });
+
     document.getElementById('mech-btn-apply')?.addEventListener('click', () => {
         runMechanicalPipeline();
     });
@@ -328,13 +342,18 @@ function updateMechanicalResultsUI(strains, volume, rss, vonMises, fs, yieldLimi
     const fsText = fs === Infinity ? '∞' : fs.toFixed(2);
     const fsColor = fs < 1 ? '#e53e3e' : fs < 2 ? '#dd6b20' : '#38a169';
 
+    const formatVal = (v, d = 4) => {
+        if (Math.abs(v) < 0.001 && v !== 0) return v.toExponential(4);
+        return v.toFixed(d);
+    };
+
     container.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 8px;">
             <!-- VON MISES Y SEGURIDAD -->
             <div style="padding: 10px; background: ${vonMises > yieldLimit ? '#fff5f5' : '#f0fff4'}; border-radius: 6px; border: 1px solid ${vonMises > yieldLimit ? '#feb2b2' : '#c6f6d5'};">
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-weight: 700; color: #2d3748; font-size: 0.85rem;">Esfuerzo Von Mises</span>
-                    <span style="font-weight: 800; color: ${vonMises > yieldLimit ? '#c53030' : '#2f855a'}; font-size: 1rem;">${vonMises.toFixed(2)} MPa</span>
+                    <span style="font-weight: 800; color: ${vonMises > yieldLimit ? '#c53030' : '#2f855a'}; font-size: 1rem;">${formatVal(vonMises, 6)} MPa</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
                     <span style="font-size: 0.75rem; color: #4a5568;">Factor de Seguridad (n)</span>
@@ -347,11 +366,11 @@ function updateMechanicalResultsUI(strains, volume, rss, vonMises, fs, yieldLimi
             <div style="display: flex; flex-direction: column; gap: 4px; padding: 5px;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
                     <span style="color: #4a5568;">ε Axial (Promedio)</span>
-                    <span style="font-weight: 700;">${((strains.ex + strains.ey + strains.ez)/3 * 100).toFixed(4)} %</span>
+                    <span style="font-weight: 700;">${formatVal((strains.ex + strains.ey + strains.ez)/3 * 100, 6)} %</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem;">
                     <span style="color: #4a5568;">γ Cizalle (xy)</span>
-                    <span style="font-weight: 700;">${(strains.gxy * 100).toFixed(4)} %</span>
+                    <span style="font-weight: 700;">${formatVal(strains.gxy * 100, 6)} %</span>
                 </div>
             </div>
 
@@ -359,11 +378,11 @@ function updateMechanicalResultsUI(strains, volume, rss, vonMises, fs, yieldLimi
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; border-top: 1px dashed #e2e8f0; padding-top: 8px;">
                 <div style="text-align: center;">
                     <div style="font-size: 0.65rem; color: #718096; text-transform: uppercase;">ΔV/V0</div>
-                    <div style="font-weight: 700; font-size: 0.8rem; color: #2b6cb0;">${(volume * 100).toFixed(3)}%</div>
+                    <div style="font-weight: 700; font-size: 0.8rem; color: #2b6cb0;">${formatVal(volume * 100, 6)}%</div>
                 </div>
                 <div style="text-align: center;">
                     <div style="font-size: 0.65rem; color: #718096; text-transform: uppercase;">RSS (Schmid)</div>
-                    <div style="font-weight: 700; font-size: 0.8rem; color: #c53030;">${rss.toFixed(1)} MPa</div>
+                    <div style="font-weight: 700; font-size: 0.8rem; color: #c53030;">${formatVal(rss, 4)} MPa</div>
                 </div>
             </div>
         </div>

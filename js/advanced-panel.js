@@ -259,7 +259,12 @@ function bindAdvancedPanelEvents(updateScene) {
         const el = document.getElementById(id);
         if (el) {
             el.oninput = () => { sanitizeIntegerInput(el); updateScene(); };
-            el.onkeydown = (e) => e.stopPropagation();
+            el.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    if (updateScene) updateScene();
+                }
+                e.stopPropagation();
+            };
             el.onkeyup = (e) => e.stopPropagation();
         }
     });

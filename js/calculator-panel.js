@@ -268,15 +268,20 @@ function bindCalculatorEvents() {
         applySelectedMaterial(e.target.value);
         if (typeof window.triggerCalculatorUpdate === 'function') window.triggerCalculatorUpdate();
     });
+
     ['calc-a', 'calc-c', 'calc-mass', 'calc-h', 'calc-k', 'calc-l', 'calc-structure-select', 'calc-iso-mode', 'calc-iso-single-select'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         
         el.addEventListener('input', () => {
-             if (id === 'calc-h' || id === 'calc-k' || id === 'calc-l') {
-                 sanitizeIntegerInput(el);
-             }
              if (typeof window.triggerCalculatorUpdate === 'function') window.triggerCalculatorUpdate();
+        });
+
+        el.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                syncCalculatorStateToScene();
+            }
+            e.stopPropagation();
         });
     });
 
