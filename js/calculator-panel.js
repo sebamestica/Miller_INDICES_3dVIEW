@@ -413,7 +413,7 @@ function renderCalculatorContent() {
         </div>
 
         <div style="padding: 15px; text-align: center;">
-            <button id="calc-btn-apply-scene" class="btn-main" style="width: 100%; padding: 12px; border-radius: 8px; font-weight: 700; background: var(--accent-color); color: white; border: none; cursor: pointer; transition: transform 0.2s;">
+            <button id="calc-btn-apply-scene" class="primary-btn" style="background: #008080;">
                 APLICAR DATOS AL VISOR 3D
             </button>
             <div id="calc-info-msg" style="margin-top: 12px; font-size: 0.7rem; color: var(--text-muted); font-style: italic;">
@@ -428,9 +428,14 @@ export function updateCrystalCalculatorResults(results) {
     if (!panel || !panel.classList.contains('visible')) return;
     if (!results) return;
 
+    const formatVal = (v, d = 4) => {
+        if (Math.abs(v) < 0.001 && v !== 0) return v.toExponential(4);
+        return v.toFixed(d);
+    };
+
     const setVal = (id, val, suffix = "") => {
         const el = document.getElementById(id);
-        if (el) el.textContent = (val === 0 || isNaN(val)) ? '-' : `${val.toFixed(4)}${suffix}`;
+        if (el) el.textContent = (val === 0 || isNaN(val)) ? '-' : `${formatVal(val, 4)}${suffix}`;
     };
 
     const isHex = (results.hexVol > 0);

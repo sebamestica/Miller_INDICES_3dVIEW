@@ -145,6 +145,11 @@ header p { font-size: 0.95rem; color: var(--text-muted); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
 .grid-4 { grid-template-columns: repeat(4, 1fr); }
 
+@media (max-width: 450px) {
+    .grid-3, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .coord-input { font-size: 1rem; padding: 8px; }
+}
+
 .input-box label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 8px; color: var(--text-secondary); text-align: center;}
 .coord-input {
     width: 100%;
@@ -570,19 +575,33 @@ input:checked + .slider:before {
         left: 0;
         right: 0;
         width: 100%;
-        height: 70vh;
+        height: 75vh;
         top: auto;
         bottom: 0;
         transform: translateY(100%);
-        border-radius: 24px 24px 0 0;
+        border-radius: 32px 32px 0 0;
         border: none;
         border-top: 1px solid var(--border-color);
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 -10px 40px rgba(0,0,0,0.15);
+        transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         z-index: 2000;
-        display: flex !important; /* Asegurar que el flex se aplique al ser visible */
+        display: flex !important;
+        padding-bottom: env(safe-area-inset-bottom);
     }
     #advanced-panel.visible, #calc-panel.visible, #mech-panel.visible {
         transform: translateY(0);
+    }
+    .calc-header, .mech-header, .adv-header {
+        padding: 20px 25px;
+        border-radius: 32px 32px 0 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
+    }
+    .calc-header h2, .mech-header h2, .adv-header h2 {
+        font-size: 1rem;
     }
 }
 
